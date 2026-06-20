@@ -4,6 +4,13 @@
 
 <img width="1883" height="850" alt="screencapture-localhost-3000-login-2026-06-19-12_00_39 (1)" src="https://github.com/user-attachments/assets/9fbb8363-3c7b-4b81-a55e-ca702100f7a6" />
 
+    Group 5
+1. Alfred .M. Kargbo
+2. Joseph Tommy Koroma
+3. Alhaji Amadu Wurie Bah
+4. Juliet J.S Kamara
+5. Paul M Caray
+
 
 
 ## 🚀 Setup Instructions
