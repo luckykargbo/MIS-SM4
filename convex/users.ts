@@ -241,14 +241,20 @@ export const createUser = mutation({
     plainPassword: v.optional(v.string()),
     program: v.optional(v.string()),
     profileImage: v.optional(v.string()),
+    academicYear: v.optional(v.string()),
+    tuitionFee: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const reqId = ctx.db.normalizeId("users", args.requesterId);
     if (!reqId) throw new ConvexError("Invalid requester session ID.");
 
     const requester = await ctx.db.get(reqId);
-    if (!requester || requester.role !== "admin") {
-      throw new ConvexError("Access Denied: Only Administrators can provision accounts.");
+    if (!requester || (requester.role !== "admin" && requester.role !== "registry")) {
+      throw new ConvexError("Access Denied: Only Administrators and Registry can provision accounts.");
+    }
+    
+    if (requester.role === "registry" && args.role !== "student") {
+      throw new ConvexError("Access Denied: Registry can only provision student accounts.");
     }
 
     const normalizedEmail = args.email.trim().toLowerCase();
@@ -339,17 +345,17 @@ export const createUser = mutation({
         faculty: facultyName,
         program: programName,
         semester: 1,
-        academicYear: "2025/2026",
+        academicYear: args.academicYear || "2025/2026",
         registryStatus: "active",
         enrolledCourses: [],
         createdAt: Date.now(),
       });
 
       // Create tuition ledger
-      const defaultTuition = 15000;
+      const defaultTuition = args.tuitionFee !== undefined ? args.tuitionFee : 15000;
       await ctx.db.insert("finance", {
         studentId,
-        academicYear: "2025/2026",
+        academicYear: args.academicYear || "2025/2026",
         semester: 1,
         tuitionFee: defaultTuition,
         amountPaid: 0,

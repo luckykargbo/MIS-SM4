@@ -537,6 +537,12 @@ export default function RegistryPanel({ user }) {
   const [metaModalOpen, setMetaModalOpen] = useState(false);
   const [metaForm, setMetaForm] = useState({ date: '', venue: '', invigilator: '', className: '', candidatesPresent: '' });
 
+  // Registration Form state
+  const [regForm, setRegForm] = useState({ name: '', email: '', program: 'Bachelor of Information Technology', academicYear: '2025/2026', tuitionFee: 15000 });
+  const [regMessage, setRegMessage] = useState(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const createUser = useMutation(api.users.createUser);
+
   const students = useQuery(api.students.listStudents, { 
     requesterId: user._id || user.userId,
     faculty: faculty || undefined,
@@ -565,6 +571,29 @@ export default function RegistryPanel({ user }) {
       alert(`Deferred application successfully ${status}! Student has been notified via portal and email.`);
     } catch (err) {
       alert("Failed to update status: " + err.message);
+    }
+  };
+
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    setIsRegistering(true);
+    setRegMessage(null);
+    try {
+      const result = await createUser({
+        requesterId: user._id || user.userId,
+        name: regForm.name,
+        email: regForm.email,
+        role: "student",
+        program: regForm.program,
+        academicYear: regForm.academicYear,
+        tuitionFee: Number(regForm.tuitionFee)
+      });
+      setRegMessage({ type: 'success', text: `Student registered successfully! Roll Number: ${result.rollNumber || 'Generated'}, Temp Password: ${result.plainPassword || 'Check Database'}` });
+      setRegForm({ name: '', email: '', program: 'Bachelor of Information Technology', academicYear: '2025/2026', tuitionFee: 15000 });
+    } catch (err) {
+      setRegMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -771,9 +800,20 @@ export default function RegistryPanel({ user }) {
         >
           Deferred Applications
         </button>
+        <button
+          onClick={() => { setActiveTab('register'); setSelectedCourse(''); }}
+          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider ${
+            activeTab === 'register'
+              ? 'border-blue-500 text-blue-400'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          Register Student
+        </button>
       </div>
 
       {/* Filtering Header */}
+      {activeTab !== 'register' && (
       <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {/* Search bar */}
@@ -856,6 +896,7 @@ export default function RegistryPanel({ user }) {
           </div>
         )}
       </div>
+      )}
 
       {/* Registry Record Table */}
       <div className="bg-slate-900/50 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
@@ -868,11 +909,13 @@ export default function RegistryPanel({ user }) {
               <h2 className="text-lg font-bold text-white uppercase tracking-tight">
                 {activeTab === 'master' ? 'Master Enrollment Ledger' : 
                  activeTab === 'midterm' ? 'Midterm Sitting Slips' : 
-                 activeTab === 'deferred' ? 'Deferred Exam Applications' : 'Final Sitting Slips'}
+                 activeTab === 'deferred' ? 'Deferred Exam Applications' : 
+                 activeTab === 'register' ? 'Provisioning Student' : 'Final Sitting Slips'}
               </h2>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                 {activeTab === 'master' ? `Academic Year ${academicYear || 'Global'} View` : 
                  activeTab === 'deferred' ? 'List of submitted deferred access form applications' :
+                 activeTab === 'register' ? 'Register a new candidate into the system' :
                  selectedCourse ? `Cleared Candidates for ${selectedCourse}` : 'Please select a course above'}
               </p>
             </div>
@@ -888,7 +931,7 @@ export default function RegistryPanel({ user }) {
                 <Download className="w-4 h-4" /> Export CSV
               </button>
             ) : null
-          ) : (
+          ) : activeTab === 'register' ? null : (
             <button 
               onClick={() => setMetaModalOpen(true)}
               disabled={!selectedCourse || filteredStudents?.length === 0}
@@ -906,6 +949,59 @@ export default function RegistryPanel({ user }) {
             <p className="text-xs text-slate-600 max-w-sm mx-auto">
               Please choose a course module from the dropdown filter above to inspect eligible students and generate printable attendance sheets or slips.
             </p>
+          </div>
+        ) : activeTab === 'register' ? (
+          <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-3xl max-w-4xl mx-auto mt-8">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20">
+                <Users className="w-8 h-8 text-blue-500" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black text-white uppercase tracking-tight">Register New Student</h3>
+                <p className="text-sm text-slate-400">Fill in the details below to provision a new student account. Roll numbers and initial ledger are automatically generated.</p>
+              </div>
+            </div>
+
+            {regMessage && (
+              <div className={`p-4 mb-6 rounded-xl border ${regMessage.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
+                {regMessage.text}
+              </div>
+            )}
+
+            <form onSubmit={handleRegisterSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">Full Name <span className="text-red-500">*</span></label>
+                  <input required value={regForm.name} onChange={e => setRegForm({...regForm, name: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-white outline-none focus:border-blue-500/50" placeholder="e.g. John Doe" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">Institutional Email <span className="text-red-500">*</span></label>
+                  <input required type="email" value={regForm.email} onChange={e => setRegForm({...regForm, email: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-white outline-none focus:border-blue-500/50" placeholder="student@limkokwing.edu.sl" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">Enrolled Program <span className="text-red-500">*</span></label>
+                  <select required value={regForm.program} onChange={e => setRegForm({...regForm, program: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-white outline-none focus:border-blue-500/50 font-bold">
+                    {Object.keys(COURSE_CATALOG).map(prog => (
+                      <option key={prog} value={prog}>{prog}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">Academic Year <span className="text-red-500">*</span></label>
+                  <input required value={regForm.academicYear} onChange={e => setRegForm({...regForm, academicYear: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-white outline-none focus:border-blue-500/50 font-bold" placeholder="e.g. 2025/2026" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">Starting Tuition Fee (SLL) <span className="text-red-500">*</span></label>
+                  <input required type="number" min="0" value={regForm.tuitionFee} onChange={e => setRegForm({...regForm, tuitionFee: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-white outline-none focus:border-blue-500/50 font-bold" placeholder="e.g. 15000" />
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-end">
+                <button type="submit" disabled={isRegistering} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold py-4 px-8 rounded-xl transition-all shadow-lg shadow-blue-500/20">
+                  {isRegistering ? 'Provisioning Student...' : 'Complete Registration'}
+                </button>
+              </div>
+            </form>
           </div>
         ) : (
           <div className="overflow-x-auto">
