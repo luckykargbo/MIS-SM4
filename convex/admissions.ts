@@ -131,16 +131,90 @@ export const reviewApplication = mutation({
     const application = await ctx.db.get(args.applicationId);
     if (!application) throw new ConvexError("Application not found.");
 
+    // Generate a secure verification code if approved
+    let verificationCode = undefined;
+    if (args.status === "approved") {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Removed confusing chars like I, O, 0, 1
+      let code = "LUSL-";
+      for (let i = 0; i < 5; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+      verificationCode = code;
+    }
+
     await ctx.db.patch(args.applicationId, {
       status: args.status,
       reviewedBy: reqId,
+      verificationCode,
     });
 
-    // If approved, return the application data so frontend can create the user
-    if (args.status === "approved") {
-      return { success: true, application };
+    // Fetch the updated application to return it
+    const updatedApplication = await ctx.db.get(args.applicationId);
+
+    if (args.status === "approved" && updatedApplication) {
+      return { success: true, application: updatedApplication };
     }
 
     return { success: true };
+  },
+});
+
+// ─── APPLICANT PUBLIC STATUS QUERY ────────────────────────────
+
+export const checkApplicationStatus = query({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const normalizedEmail = args.email.trim().toLowerCase();
+    const existing = await ctx.db
+      .query("applications")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+      .order("desc")
+      .first();
+
+    if (!existing) return { found: false };
+    return { found: true, application: existing };
+  },
+});
+
+// ─── REGISTRY PHYSICAL VERIFICATION ───────────────────────────
+
+export const verifyAcceptanceLetter = mutation({
+  args: {
+    requesterId: v.string(),
+    verificationCode: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const reqId = ctx.db.normalizeId("users", args.requesterId);
+    if (!reqId) throw new ConvexError("Invalid requester ID.");
+
+    const requester = await ctx.db.get(reqId);
+    if (!requester || (requester.role !== "admin" && requester.role !== "registry")) {
+      throw new ConvexError("Access Denied.");
+    }
+
+    // Find application by verification code
+    const applications = await ctx.db.query("applications").collect();
+    const app = applications.find(a => a.verificationCode === args.verificationCode);
+    
+    if (!app) throw new ConvexError("Invalid Verification Code. This letter is not authentic.");
+    if (app.status !== "approved") throw new ConvexError("This application is not approved.");
+
+    // Find the provisioned student record by matching email to user, then to student
+    // This assumes the user was provisioned with the application's email
+    const user = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", app.email)).first();
+    if (!user) throw new ConvexError("Student user account not found. Provisioning may have failed.");
+
+    const student = await ctx.db.query("students").withIndex("by_userId", q => q.eq("userId", user._id)).first();
+    if (!student) throw new ConvexError("Student academic record not found.");
+
+    if (student.isPhysicallyVerified) {
+      throw new ConvexError("This student has already been physically verified.");
+    }
+
+    await ctx.db.patch(student._id, {
+      isPhysicallyVerified: true,
+    });
+
+    return { success: true, studentName: `${app.firstName} ${app.lastName}`, rollNumber: student.rollNumber };
   },
 });

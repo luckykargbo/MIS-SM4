@@ -548,6 +548,11 @@ export default function RegistryPanel({ user }) {
   const togglePortal = useMutation(api.admissions.togglePortalStatus);
   const applications = useQuery(api.admissions.listApplications, { requesterId: user._id || user.userId });
   const reviewApp = useMutation(api.admissions.reviewApplication);
+  const verifyAppLetter = useMutation(api.admissions.verifyAcceptanceLetter);
+
+  const [verifyCode, setVerifyCode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState(null);
 
   const students = useQuery(api.students.listStudents, { 
     requesterId: user._id || user.userId,
@@ -577,6 +582,25 @@ export default function RegistryPanel({ user }) {
       alert(`Deferred application successfully ${status}! Student has been notified via portal and email.`);
     } catch (err) {
       alert("Failed to update status: " + err.message);
+    }
+  };
+
+  const handleVerifyLetter = async (e) => {
+    e.preventDefault();
+    if (!verifyCode) return;
+    setIsVerifying(true);
+    setVerifyMsg(null);
+    try {
+      const res = await verifyAppLetter({
+        requesterId: user._id || user.userId,
+        verificationCode: verifyCode.trim().toUpperCase()
+      });
+      setVerifyMsg(`Success! ${res.studentName} (${res.rollNumber}) is physically verified.`);
+      setVerifyCode('');
+    } catch (err) {
+      setVerifyMsg(`Error: ${err.message}`);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -1061,8 +1085,21 @@ export default function RegistryPanel({ user }) {
             </form>
           </div>
         ) : activeTab === 'admissions' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="space-y-8">
+            <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl">
+              <h3 className="text-xl font-black text-white mb-2">Verify Acceptance Letter</h3>
+              <p className="text-sm text-slate-400 mb-6">Enter the Verification Code from the student's physical Acceptance Letter to unlock their Finance portal.</p>
+              <form onSubmit={handleVerifyLetter} className="flex gap-4">
+                <input required value={verifyCode} onChange={e => setVerifyCode(e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-mono tracking-widest outline-none focus:border-blue-500/50" placeholder="LUSL-XXXXX" />
+                <button type="submit" disabled={isVerifying} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
+                  {isVerifying ? 'Verifying...' : 'Verify & Unlock'}
+                </button>
+              </form>
+              {verifyMsg && <p className={`mt-4 text-sm font-bold ${verifyMsg.includes('Error') || verifyMsg.includes('Invalid') ? 'text-red-400' : 'text-emerald-400'}`}>{verifyMsg}</p>}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800">
                   <th className="px-6 py-4">Applicant Name</th>

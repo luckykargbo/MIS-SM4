@@ -46,6 +46,7 @@ export default defineSchema({
     enrolledCourses: v.array(v.string()),
     gender: v.optional(v.string()),
     transcriptRemoved: v.optional(v.boolean()),
+    isPhysicallyVerified: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_userId", ["userId"])
@@ -205,6 +206,7 @@ export default defineSchema({
       v.literal("approved"),
       v.literal("rejected")
     ),
+    verificationCode: v.optional(v.string()),
     reviewedBy: v.optional(v.id("users")),
     createdAt: v.number(),
   })

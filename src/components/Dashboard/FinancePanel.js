@@ -2,11 +2,13 @@
 
 import { 
   DollarSign, TrendingUp, CreditCard, 
-  ArrowUpRight, Download, History 
+  ArrowUpRight, Download, History, ShieldAlert, CheckCircle2 
 } from 'lucide-react';
 import MaskedData from '../ui/MaskedData';
+import { useState } from 'react';
 
 export default function FinancePanel() {
+  const [isSimulatedVerified, setIsSimulatedVerified] = useState(true);
   return (
     <div className="space-y-6">
       {/* Finance Quick Stats */}
@@ -59,11 +61,28 @@ export default function FinancePanel() {
                   IK
                </div>
                <div>
-                  <h4 className="font-bold text-white">Ibrahim Kamara</h4>
+                  <h4 className="font-bold text-white flex items-center gap-2">
+                    Ibrahim Kamara
+                    {isSimulatedVerified ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" title="Physically Verified" />
+                    ) : (
+                      <ShieldAlert className="w-4 h-4 text-red-500 animate-pulse" title="Not Verified" />
+                    )}
+                  </h4>
                   <p className="text-xs text-slate-500">Faculty of ICT • BSc Software Engineering</p>
                </div>
-               <div className="ml-auto">
-                  <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase rounded-lg">High Trust Level</div>
+               <div className="ml-auto flex items-center gap-4">
+                  <button 
+                    onClick={() => setIsSimulatedVerified(!isSimulatedVerified)}
+                    className="text-[10px] uppercase font-bold text-slate-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-800"
+                  >
+                    Simulate: {isSimulatedVerified ? 'Verified' : 'Unverified'}
+                  </button>
+                  {isSimulatedVerified ? (
+                    <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase rounded-lg">High Trust Level</div>
+                  ) : (
+                    <div className="px-3 py-1 bg-red-500/10 text-red-500 text-[10px] font-black uppercase rounded-lg">Verification Required</div>
+                  )}
                </div>
             </div>
 
@@ -74,8 +93,26 @@ export default function FinancePanel() {
                <MaskedData label="Lab Compliance Status" value="PAID - FULL" type="text" />
             </div>
 
+            {/* Cyber Lock Warning */}
+            {!isSimulatedVerified && (
+               <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
+                 <ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                 <div>
+                   <h5 className="text-sm font-bold text-red-500 uppercase tracking-wider mb-1">Cybersecurity Lock Active</h5>
+                   <p className="text-xs text-red-400">
+                     This student's payments are securely locked. They must physically present their printed Acceptance Letter (with the Cryptographic Verification Code) to the Registry for verification before any financial transactions can be processed.
+                   </p>
+                 </div>
+               </div>
+            )}
+
             <div className="pt-4 flex gap-3">
-               <button className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2">
+               <button 
+                 disabled={!isSimulatedVerified}
+                 className={`text-white text-xs font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2 ${
+                   isSimulatedVerified ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-800 opacity-50 cursor-not-allowed'
+                 }`}
+               >
                   <CreditCard className="w-4 h-4" /> Process Payment
                </button>
                <button className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-3 px-6 rounded-xl transition-all">
