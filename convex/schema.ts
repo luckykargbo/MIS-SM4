@@ -179,5 +179,36 @@ export default defineSchema({
   })
     .index("by_studentId", ["studentId"])
     .index("by_status", ["status"]),
+  // ─── ADMISSIONS SETTINGS TABLE ──────────────────────────────
+  admissionsSettings: defineTable({
+    isOpen: v.boolean(),
+    lastUpdatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }),
+
+  // ─── APPLICATIONS TABLE ─────────────────────────────────────
+  applications: defineTable({
+    firstName: v.string(),
+    lastName: v.string(),
+    email: v.string(),
+    phone: v.string(),
+    program: v.string(),
+    faculty: v.string(),
+    wassceGrades: v.array(
+      v.object({
+        subject: v.string(),
+        grade: v.string(),
+      })
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected")
+    ),
+    reviewedBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_status", ["status"]),
 });
 

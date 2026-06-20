@@ -543,6 +543,12 @@ export default function RegistryPanel({ user }) {
   const [isRegistering, setIsRegistering] = useState(false);
   const createUser = useMutation(api.users.createUser);
 
+  // Admissions State
+  const portalStatus = useQuery(api.admissions.getPortalStatus);
+  const togglePortal = useMutation(api.admissions.togglePortalStatus);
+  const applications = useQuery(api.admissions.listApplications, { requesterId: user._id || user.userId });
+  const reviewApp = useMutation(api.admissions.reviewApplication);
+
   const students = useQuery(api.students.listStudents, { 
     requesterId: user._id || user.userId,
     faculty: faculty || undefined,
@@ -571,6 +577,33 @@ export default function RegistryPanel({ user }) {
       alert(`Deferred application successfully ${status}! Student has been notified via portal and email.`);
     } catch (err) {
       alert("Failed to update status: " + err.message);
+    }
+  };
+
+  const handleReviewApplication = async (appId, status) => {
+    try {
+      const res = await reviewApp({
+        requesterId: user._id || user.userId,
+        applicationId: appId,
+        status
+      });
+      if (status === 'approved' && res.application) {
+        // Automatically provision student
+        const provRes = await createUser({
+          requesterId: user._id || user.userId,
+          name: `${res.application.firstName} ${res.application.lastName}`,
+          email: res.application.email,
+          role: "student",
+          program: res.application.program,
+          academicYear: '2025/2026',
+          tuitionFee: 15000
+        });
+        alert(`Application Approved!\nStudent Provisioned.\nRoll Number: ${provRes.rollNumber}\nPassword: ${provRes.plainPassword}`);
+      } else {
+        alert('Application Rejected.');
+      }
+    } catch (err) {
+      alert(`Error: ${err.message}`);
     }
   };
 
@@ -810,10 +843,20 @@ export default function RegistryPanel({ user }) {
         >
           Register Student
         </button>
+        <button
+          onClick={() => { setActiveTab('admissions'); setSelectedCourse(''); }}
+          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider ${
+            activeTab === 'admissions'
+              ? 'border-blue-500 text-blue-400'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          Admissions
+        </button>
       </div>
 
       {/* Filtering Header */}
-      {activeTab !== 'register' && (
+      {activeTab !== 'register' && activeTab !== 'admissions' && (
       <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {/* Search bar */}
@@ -910,12 +953,14 @@ export default function RegistryPanel({ user }) {
                 {activeTab === 'master' ? 'Master Enrollment Ledger' : 
                  activeTab === 'midterm' ? 'Midterm Sitting Slips' : 
                  activeTab === 'deferred' ? 'Deferred Exam Applications' : 
-                 activeTab === 'register' ? 'Provisioning Student' : 'Final Sitting Slips'}
+                 activeTab === 'register' ? 'Provisioning Student' : 
+                 activeTab === 'admissions' ? 'Applicant Admissions Portal' : 'Final Sitting Slips'}
               </h2>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                 {activeTab === 'master' ? `Academic Year ${academicYear || 'Global'} View` : 
                  activeTab === 'deferred' ? 'List of submitted deferred access form applications' :
                  activeTab === 'register' ? 'Register a new candidate into the system' :
+                 activeTab === 'admissions' ? 'Manage public applications from prospective students' :
                  selectedCourse ? `Cleared Candidates for ${selectedCourse}` : 'Please select a course above'}
               </p>
             </div>
@@ -931,7 +976,19 @@ export default function RegistryPanel({ user }) {
                 <Download className="w-4 h-4" /> Export CSV
               </button>
             ) : null
-          ) : activeTab === 'register' ? null : (
+          ) : activeTab === 'register' ? null : activeTab === 'admissions' ? (
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-bold text-slate-400">Portal Status:</span>
+              <button 
+                onClick={async () => {
+                  await togglePortal({ requesterId: user._id || user.userId, isOpen: !portalStatus?.isOpen });
+                }}
+                className={`flex items-center gap-2 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all shadow-md border ${portalStatus?.isOpen ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-500/20 shadow-emerald-500/20' : 'bg-red-600 hover:bg-red-500 border-red-500/20 shadow-red-500/20'}`}
+              >
+                {portalStatus?.isOpen ? 'OPEN (Click to Close)' : 'CLOSED (Click to Open)'}
+              </button>
+            </div>
+          ) : (
             <button 
               onClick={() => setMetaModalOpen(true)}
               disabled={!selectedCourse || filteredStudents?.length === 0}
@@ -1002,6 +1059,70 @@ export default function RegistryPanel({ user }) {
                 </button>
               </div>
             </form>
+          </div>
+        ) : activeTab === 'admissions' ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800">
+                  <th className="px-6 py-4">Applicant Name</th>
+                  <th className="px-6 py-4">Contact Info</th>
+                  <th className="px-6 py-4">Program Applied</th>
+                  <th className="px-6 py-4">WASSCE Grades</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/50">
+                {applications === undefined ? (
+                  <tr><td colSpan="6" className="px-6 py-20 text-center text-slate-500 text-sm italic">Loading applications...</td></tr>
+                ) : applications.length === 0 ? (
+                  <tr><td colSpan="6" className="px-6 py-20 text-center text-slate-500 text-sm italic">No applications found.</td></tr>
+                ) : (
+                  applications.map(app => (
+                    <tr key={app._id} className="hover:bg-slate-800/20 transition-colors group">
+                      <td className="px-6 py-5">
+                        <p className="text-sm font-bold text-white">{app.firstName} {app.lastName}</p>
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="text-xs text-slate-300">{app.email}</p>
+                        <p className="text-[10px] text-slate-500">{app.phone}</p>
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="text-xs font-bold text-blue-400">{app.program}</p>
+                        <p className="text-[10px] text-slate-500">{app.faculty}</p>
+                      </td>
+                      <td className="px-6 py-5 max-w-xs">
+                        <div className="flex flex-wrap gap-1">
+                          {app.wassceGrades?.map((g, i) => (
+                            <span key={i} className="text-[9px] font-bold bg-slate-900 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-md">
+                              {g.subject}: <span className={g.grade.startsWith('A') || g.grade.startsWith('B') || g.grade.startsWith('C') ? 'text-emerald-400' : 'text-red-400'}>{g.grade}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
+                          app.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                          app.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                          'bg-red-500/10 text-red-500 border-red-500/20'
+                        }`}>
+                          {app.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        {app.status === 'pending' && (
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => handleReviewApplication(app._id, 'approved')} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg transition-colors uppercase tracking-wider shadow-sm">Approve</button>
+                            <button onClick={() => handleReviewApplication(app._id, 'rejected')} className="bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg transition-colors uppercase tracking-wider shadow-sm">Reject</button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="overflow-x-auto">
