@@ -1,5 +1,11 @@
 # LUSL MIS - Institutional Management System
 
+
+
+<img width="1883" height="850" alt="screencapture-localhost-3000-login-2026-06-19-12_00_39 (1)" src="https://github.com/user-attachments/assets/9fbb8363-3c7b-4b81-a55e-ca702100f7a6" />
+
+
+
 ## 🚀 Setup Instructions
 
 1.  **Database**: Run the [schema.sql](./schema.sql) in your Supabase SQL Editor.
