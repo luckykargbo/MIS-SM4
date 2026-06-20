@@ -15,7 +15,7 @@
 
 ## 🚀 Setup Instructions
 
-1.  **Database**: Run the [schema.sql](./schema.sql) in your Supabase SQL Editor.
+1.  **Database**: Start the Convex backend by running `npx convex dev`.
 2.  **Dependencies**: Due to network issues, if `npm install` fails, try running:
     ```bash
     npm install --legacy-peer-deps --prefer-offline
@@ -26,7 +26,7 @@
     ```
 
 ## 🔐 Security Features
-- **Admin Blind Spot**: Admins cannot see financial data due to RLS policies.
+- **Admin Blind Spot**: Admins cannot see financial data due to server-side role checks.
 - **OTP Gateway**: Multi-step login with 15-minute account lockout.
 - **Privacy Masking**: All sensitive data is hidden behind an "eye icon" toggle.
 
