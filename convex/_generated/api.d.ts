@@ -9,6 +9,7 @@
  */
 
 import type * as admin_tools from "../admin_tools.js";
+import type * as admissions from "../admissions.js";
 import type * as emails from "../emails.js";
 import type * as finance from "../finance.js";
 import type * as notifications from "../notifications.js";
@@ -24,6 +25,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin_tools: typeof admin_tools;
+  admissions: typeof admissions;
   emails: typeof emails;
   finance: typeof finance;
   notifications: typeof notifications;

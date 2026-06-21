@@ -304,7 +304,7 @@ export default function SecuritySettings({ user }) {
               }
             }}
             className={`p-5 rounded-2xl border text-left flex flex-col justify-between transition-all ${
-              (dbUser?.theme || "light") === "light"
+              dbUser?.theme === "light"
                 ? "bg-blue-50/50 dark:bg-blue-950/15 border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/10"
                 : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700"
             }`}
@@ -326,7 +326,7 @@ export default function SecuritySettings({ user }) {
               }
             }}
             className={`p-5 rounded-2xl border text-left flex flex-col justify-between transition-all ${
-              dbUser?.theme === "dark"
+              dbUser?.theme !== "light"
                 ? "bg-slate-900 border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/10"
                 : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700"
             }`}

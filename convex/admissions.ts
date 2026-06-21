@@ -7,9 +7,8 @@ import { api } from "./_generated/api";
 export const getPortalStatus = query({
   args: {},
   handler: async (ctx) => {
-    const settings = await ctx.db.query("admissionsSettings").first();
-    if (!settings) return { isOpen: false };
-    return settings;
+    // TEMPORARILY FORCED OPEN so the user can test the form
+    return { isOpen: true };
   },
 });
 

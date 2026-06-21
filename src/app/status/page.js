@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from 'convex/react';
-import { api } from '../../../../convex/_generated/api';
+import { api } from '../../../convex/_generated/api';
 import { Search, Printer, ShieldCheck, CheckCircle2, Clock, XCircle, AlertTriangle, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 

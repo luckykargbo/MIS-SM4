@@ -3011,6 +3011,16 @@ export default function Dashboard() {
   }, [user, ensureProfile]);
 
   const dbUser = useQuery(api.users.getCurrentUser, { userId: user?._id || user?.userId || "" });
+
+  // Apply Theme Toggle
+  useEffect(() => {
+    if (dbUser?.theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+  }, [dbUser?.theme]);
+
   const notifications = useQuery(api.notifications.getMyNotifications, { userId: user?._id || user?.userId || "" });
   const markAsRead = useMutation(api.notifications.markAsRead);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
