@@ -130,6 +130,7 @@ export const recordPayment = mutation({
       amount: args.amount,
       type: "payment",
       method: args.method,
+      status: "verified",
       reference: args.reference,
       processedBy: args.requesterId,
       timestamp: Date.now(),
@@ -217,6 +218,8 @@ export const getFinanceOverviewStats = query({
     }
 
     const transactions = await ctx.db.query("transactions").collect();
+    const pendingVerificationsCount = transactions.filter(t => t.status === "pending").length;
+    
     const logs = await ctx.db.query("securityLogs").collect();
     const discrepancies = logs.filter(
       (l) => l.event === "login_failure" || l.event === "otp_failure"
@@ -229,8 +232,100 @@ export const getFinanceOverviewStats = query({
       clearedCount,
       totalCount: records.length,
       transactionCount: transactions.length,
+      pendingVerificationsCount,
       discrepancies,
     };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────
+// [STUDENT] Submit a payment proof for verification
+// ─────────────────────────────────────────────────────────────────
+export const submitPaymentProof = mutation({
+  args: {
+    requesterId: v.id("users"),
+    studentId: v.id("students"),
+    amount: v.number(),
+    method: v.union(v.literal("cash"), v.literal("bank_transfer"), v.literal("mobile_money")),
+    reference: v.string(),
+    proofReceipt: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const requester = await ctx.db.get(args.requesterId);
+    if (!requester || requester.role !== "student") throw new ConvexError("Only students can submit payment proofs.");
+
+    const financeRecord = await ctx.db
+      .query("finance")
+      .withIndex("by_studentId", (q: any) => q.eq("studentId", args.studentId))
+      .first();
+
+    if (!financeRecord) throw new ConvexError("No finance record found to apply payment to.");
+
+    await ctx.db.insert("transactions", {
+      financeId: financeRecord._id,
+      studentId: args.studentId,
+      amount: args.amount,
+      type: "payment",
+      method: args.method,
+      status: "pending",
+      reference: args.reference,
+      proofReceipt: args.proofReceipt,
+      timestamp: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────
+// [FINANCE + ADMIN] Verify a pending payment
+// ─────────────────────────────────────────────────────────────────
+export const verifyPaymentProof = mutation({
+  args: {
+    requesterId: v.id("users"),
+    transactionId: v.id("transactions"),
+    action: v.union(v.literal("verify"), v.literal("reject")),
+    actualAmount: v.optional(v.number()), // Finance can correct forged amounts
+  },
+  handler: async (ctx, args) => {
+    const requester = await enforceFinanceBlindSpot(ctx, args.requesterId);
+    if (requester.role !== "finance" && requester.role !== "admin") {
+      throw new ConvexError("Access Denied: Only Finance Staff or Admin can verify payments.");
+    }
+
+    const transaction = await ctx.db.get(args.transactionId);
+    if (!transaction) throw new ConvexError("Transaction not found.");
+    if (transaction.status !== "pending") throw new ConvexError("Transaction is already " + transaction.status);
+
+    if (args.action === "reject") {
+      await ctx.db.patch(transaction._id, { status: "rejected", processedBy: args.requesterId });
+      return { success: true, status: "rejected" };
+    }
+
+    // Process Verification
+    const financeRecord = await ctx.db.get(transaction.financeId);
+    if (!financeRecord) throw new ConvexError("Finance record missing.");
+
+    const finalAmount = args.actualAmount !== undefined ? args.actualAmount : transaction.amount;
+    const newAmountPaid = financeRecord.amountPaid + finalAmount;
+    const newBalance = financeRecord.tuitionFee - newAmountPaid;
+    const isCleared = newBalance <= 0;
+
+    await ctx.db.patch(financeRecord._id, {
+      amountPaid: newAmountPaid,
+      balance: newBalance,
+      isCleared,
+      lastUpdatedBy: args.requesterId,
+      updatedAt: Date.now(),
+    });
+
+    await ctx.db.patch(transaction._id, {
+      status: "verified",
+      amount: finalAmount, // Update to the real amount confirmed by Finance
+      processedBy: args.requesterId,
+    });
+
+    return { success: true, status: "verified", finalAmount };
   },
 });
 
@@ -266,5 +361,73 @@ export const getAllTransactions = query({
       });
     }
     return result;
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────
+// [INTERNAL / REGISTRY / ADMIN] Bill a new semester fee upon promotion
+// ─────────────────────────────────────────────────────────────────
+export const billSemesterFee = mutation({
+  args: {
+    requesterId: v.id("users"),
+    studentId: v.id("students"),
+    amount: v.number(),
+    description: v.string(),
+    academicYear: v.string(),
+    semester: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const requester = await ctx.db.get(args.requesterId);
+    if (!requester) throw new ConvexError("Unauthorized.");
+    if (requester.role !== "registry" && requester.role !== "admin") {
+      throw new ConvexError("Only registry staff or admins can bill fee rollovers.");
+    }
+
+    const financeRecord = await ctx.db
+      .query("finance")
+      .withIndex("by_studentId", (q: any) => q.eq("studentId", args.studentId))
+      .first();
+
+    if (!financeRecord) {
+      await ctx.db.insert("finance", {
+        studentId: args.studentId,
+        academicYear: args.academicYear,
+        semester: args.semester,
+        tuitionFee: args.amount,
+        amountPaid: 0,
+        balance: args.amount,
+        isCleared: false,
+        invoiceLines: [
+          {
+            description: args.description,
+            amount: args.amount,
+            date: Date.now(),
+          }
+        ],
+        lastUpdatedBy: args.requesterId,
+        updatedAt: Date.now(),
+      });
+    } else {
+      const newTuitionFee = financeRecord.tuitionFee + args.amount;
+      const newBalance = financeRecord.balance + args.amount;
+      const updatedInvoiceLines = [...financeRecord.invoiceLines, {
+        description: args.description,
+        amount: args.amount,
+        date: Date.now(),
+      }];
+
+      await ctx.db.patch(financeRecord._id, {
+        tuitionFee: newTuitionFee,
+        balance: newBalance,
+        isCleared: newBalance <= 0,
+        invoiceLines: updatedInvoiceLines,
+        academicYear: args.academicYear,
+        semester: args.semester,
+        lastUpdatedBy: args.requesterId,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return { success: true };
   },
 });

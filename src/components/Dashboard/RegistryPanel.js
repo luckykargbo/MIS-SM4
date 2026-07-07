@@ -126,6 +126,106 @@ function GradeBadge({ grade }) {
   return <span className={`text-sm font-black ${color}`}>{grade}</span>;
 }
 
+// ─── Calendar & Academic Settings Block ─────────────────────
+function CalendarSettingsBlock({ user }) {
+  const settings = useQuery(api.settings.getAcademicSettings);
+  const updateSettings = useMutation(api.settings.updateAcademicSettings);
+  
+  const [reopening, setReopening] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [year, setYear] = useState('');
+  const [semester, setSemester] = useState(1);
+  const [isOpen, setIsOpen] = useState(true);
+  const [message, setMessage] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Sync state when query returns
+  useState(() => {
+    if (settings) {
+      setReopening(new Date(settings.reopeningDate).toISOString().split('T')[0]);
+      setDeadline(new Date(settings.registrationDeadline).toISOString().split('T')[0]);
+      setYear(settings.currentAcademicYear);
+      setSemester(settings.currentSemester);
+      setIsOpen(settings.isRegistrationOpen);
+    }
+  }, [settings]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      await updateSettings({
+        requesterId: user._id || user.userId,
+        reopeningDate: new Date(reopening).getTime(),
+        registrationDeadline: new Date(deadline).getTime(),
+        currentAcademicYear: year,
+        currentSemester: parseInt(semester),
+        isRegistrationOpen: isOpen,
+      });
+      setMessage({ type: 'success', text: 'Academic Calendar Settings updated successfully!' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to update settings' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (settings === undefined) {
+    return <div className="p-8 text-center text-slate-500">Loading university academic standing dates...</div>;
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 p-8 rounded-3xl max-w-4xl mx-auto mt-8 shadow-sm">
+      <h3 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">University Calendar & Settings</h3>
+      <p className="text-sm text-slate-500 mb-8 font-sans">Manage the university reopening timelines, enrollment years, active semesters, and block registration permissions.</p>
+      
+      {message && (
+        <div className={`p-4 mb-6 rounded-xl border ${message.type === 'error' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-emerald-55 border-emerald-100 text-emerald-600'}`}>
+          {message.text}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase">University Reopening Date</label>
+            <input type="date" required value={reopening} onChange={e => setReopening(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 outline-none focus:border-blue-500/50" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase">Late Registration Deadline</label>
+            <input type="date" required value={deadline} onChange={e => setDeadline(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 outline-none focus:border-blue-500/50" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase">Active Academic Year</label>
+            <input required value={year} onChange={e => setYear(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 outline-none focus:border-blue-500/50 font-bold" placeholder="e.g. 2025/2026" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase">Active Term Semester</label>
+            <select value={semester} onChange={e => setSemester(parseInt(e.target.value))} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-700 outline-none focus:border-blue-500/50 font-bold">
+              <option value={1}>Semester 1 (Fall Term)</option>
+              <option value={2}>Semester 2 (Spring Term)</option>
+            </select>
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-xs font-bold text-slate-500 uppercase">Global Registration Gateway Status</label>
+            <select value={isOpen ? "open" : "closed"} onChange={e => setIsOpen(e.target.value === "open")} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-700 outline-none focus:border-blue-500/50 font-bold">
+              <option value="open">Open (Students can register for modules)</option>
+              <option value="closed">Closed (Module registration gateway locked)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="pt-4 flex justify-end">
+          <button type="submit" disabled={isSaving} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-8 rounded-xl transition-all shadow-md shadow-blue-500/10">
+            {isSaving ? 'Saving Configurations...' : 'Save Calendar Settings'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ACADEMIC DETAILS MODAL
 // ═══════════════════════════════════════════════════════════════
@@ -562,6 +662,8 @@ export default function RegistryPanel({ user }) {
 
   const updateStatus = useMutation(api.students.updateStudentStatus);
   const updateTranscriptStatus = useMutation(api.students.updateTranscriptStatus);
+  const promoteMutation = useMutation(api.students.promoteStudent);
+  const toggleNeedsRepeat = useMutation(api.students.toggleNeedsRepeat);
 
   const deferredApps = useQuery(api.students.listDeferredApplications, {
     requesterId: user._id || user.userId
@@ -786,43 +888,43 @@ export default function RegistryPanel({ user }) {
     <div className="space-y-6">
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-slate-900/80 to-slate-900/40 border border-slate-800 rounded-3xl p-6">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
               <Users className="w-5 h-5 text-blue-500" />
             </div>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Total Enrolled</p>
           </div>
-          <p className="text-3xl font-black text-white">{totalStudents}</p>
+          <p className="text-3xl font-black text-slate-900">{totalStudents}</p>
         </div>
-        <div className="bg-gradient-to-br from-slate-900/80 to-slate-900/40 border border-slate-800 rounded-3xl p-6">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5 text-emerald-500" />
             </div>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Active Students</p>
           </div>
-          <p className="text-3xl font-black text-white">{activeStudents}</p>
+          <p className="text-3xl font-black text-slate-900">{activeStudents}</p>
         </div>
-        <div className="bg-gradient-to-br from-slate-900/80 to-slate-900/40 border border-slate-800 rounded-3xl p-6">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-violet-500/10 rounded-xl flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-violet-500" />
             </div>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Graduated</p>
           </div>
-          <p className="text-3xl font-black text-white">{graduatedStudents}</p>
+          <p className="text-3xl font-black text-slate-900">{graduatedStudents}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-800 gap-2">
+      <div className="flex border-b border-slate-200 gap-2">
         <button
           onClick={() => { setActiveTab('master'); setSelectedCourse(''); }}
           className={`px-5 py-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider ${
             activeTab === 'master'
-              ? 'border-blue-500 text-blue-400'
-              : 'border-transparent text-slate-400 hover:text-white'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Master Ledger
@@ -831,8 +933,8 @@ export default function RegistryPanel({ user }) {
           onClick={() => { setActiveTab('midterm'); setSelectedCourse(''); }}
           className={`px-5 py-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider ${
             activeTab === 'midterm'
-              ? 'border-blue-500 text-blue-400'
-              : 'border-transparent text-slate-400 hover:text-white'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Midterm Exam Slips
@@ -841,8 +943,8 @@ export default function RegistryPanel({ user }) {
           onClick={() => { setActiveTab('final'); setSelectedCourse(''); }}
           className={`px-5 py-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider ${
             activeTab === 'final'
-              ? 'border-blue-500 text-blue-400'
-              : 'border-transparent text-slate-400 hover:text-white'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Final Exam Slips
@@ -851,8 +953,8 @@ export default function RegistryPanel({ user }) {
           onClick={() => { setActiveTab('deferred'); setSelectedCourse(''); }}
           className={`px-5 py-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider ${
             activeTab === 'deferred'
-              ? 'border-blue-500 text-blue-400'
-              : 'border-transparent text-slate-400 hover:text-white'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Deferred Applications
@@ -861,8 +963,8 @@ export default function RegistryPanel({ user }) {
           onClick={() => { setActiveTab('register'); setSelectedCourse(''); }}
           className={`px-5 py-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider ${
             activeTab === 'register'
-              ? 'border-blue-500 text-blue-400'
-              : 'border-transparent text-slate-400 hover:text-white'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Register Student
@@ -871,26 +973,36 @@ export default function RegistryPanel({ user }) {
           onClick={() => { setActiveTab('admissions'); setSelectedCourse(''); }}
           className={`px-5 py-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider ${
             activeTab === 'admissions'
-              ? 'border-blue-500 text-blue-400'
-              : 'border-transparent text-slate-400 hover:text-white'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Admissions
         </button>
+        <button
+          onClick={() => { setActiveTab('calendar'); setSelectedCourse(''); }}
+          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider ${
+            activeTab === 'calendar'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          Calendar & Settings
+        </button>
       </div>
 
       {/* Filtering Header */}
-      {activeTab !== 'register' && activeTab !== 'admissions' && (
-      <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl space-y-4">
+      {activeTab !== 'register' && activeTab !== 'admissions' && activeTab !== 'calendar' && (
+      <div className="bg-white border border-slate-200 p-6 rounded-3xl space-y-4 shadow-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {/* Search bar */}
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name, Roll No..." 
-              className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl py-3 pl-11 pr-4 text-sm text-white outline-none focus:border-blue-500/50 transition-all font-sans"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-11 pr-4 text-sm text-slate-900 outline-none focus:border-blue-500/50 transition-all font-sans"
             />
           </div>
 
@@ -901,7 +1013,7 @@ export default function RegistryPanel({ user }) {
               setFaculty(e.target.value);
               setSelectedCourse(''); // reset selected course on filter change
             }}
-            className="bg-slate-950/50 border border-slate-800 rounded-2xl py-3 px-4 text-sm text-white outline-none focus:border-blue-500/50 font-bold"
+            className="bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm text-slate-700 outline-none focus:border-blue-500/50 font-bold"
           >
             <option value="">All Departments</option>
             {faculties.map(f => <option key={f} value={f}>{f}</option>)}
@@ -914,7 +1026,7 @@ export default function RegistryPanel({ user }) {
               setSemesterFilter(e.target.value);
               setSelectedCourse(''); // reset selected course on filter change
             }}
-            className="bg-slate-950/50 border border-slate-800 rounded-2xl py-3 px-4 text-sm text-white outline-none focus:border-blue-500/50 font-bold"
+            className="bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm text-slate-700 outline-none focus:border-blue-500/50 font-bold"
           >
             <option value="">All Semesters</option>
             {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
@@ -929,7 +1041,7 @@ export default function RegistryPanel({ user }) {
               setAcademicYear(e.target.value);
               setSelectedCourse(''); // reset selected course on filter change
             }}
-            className="bg-slate-950/50 border border-slate-800 rounded-2xl py-3 px-4 text-sm text-white outline-none focus:border-blue-500/50 font-bold"
+            className="bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm text-slate-700 outline-none focus:border-blue-500/50 font-bold"
           >
             <option value="">Enrollment Year</option>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -953,7 +1065,7 @@ export default function RegistryPanel({ user }) {
                   className: val ? `${selectedFacultyText} / ${selectedSemText}`.toUpperCase() : "",
                 }));
               }}
-              className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl py-3 px-4 text-sm text-white outline-none focus:border-blue-500/50 font-bold font-sans"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm text-slate-700 outline-none focus:border-blue-500/50 font-bold font-sans"
             >
               <option value="">Select Exam Course (Module Code)...</option>
               {enrolledCoursesList.map(c => (
@@ -966,14 +1078,14 @@ export default function RegistryPanel({ user }) {
       )}
 
       {/* Registry Record Table */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-        <div className="p-6 border-b border-slate-800 flex items-center justify-between flex-wrap gap-4">
+      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-slate-200 flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
               <Users className="w-5 h-5 text-blue-500" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white uppercase tracking-tight">
+              <h2 className="text-lg font-bold text-slate-900 uppercase tracking-tight">
                 {activeTab === 'master' ? 'Master Enrollment Ledger' : 
                  activeTab === 'midterm' ? 'Midterm Sitting Slips' : 
                  activeTab === 'deferred' ? 'Deferred Exam Applications' : 
@@ -1162,12 +1274,14 @@ export default function RegistryPanel({ user }) {
             </table>
           </div>
         </div>
+        ) : activeTab === 'calendar' ? (
+          <CalendarSettingsBlock user={user} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 {activeTab === 'deferred' ? (
-                  <tr className="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800">
+                  <tr className="bg-slate-50 text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-200">
                     <th className="px-6 py-4">Student Name</th>
                     <th className="px-6 py-4">Roll Number</th>
                     <th className="px-6 py-4">Category</th>
@@ -1178,7 +1292,7 @@ export default function RegistryPanel({ user }) {
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 ) : (
-                  <tr className="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800">
+                  <tr className="bg-slate-50 text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-200">
                     <th className="px-6 py-4">{activeTab === 'master' ? 'Student Name' : 'No.'}</th>
                     <th className="px-6 py-4">{activeTab === 'master' ? 'Roll Number' : 'Student ID'}</th>
                     <th className="px-6 py-4">{activeTab === 'master' ? 'Department / Program' : 'Student Name'}</th>
@@ -1195,7 +1309,7 @@ export default function RegistryPanel({ user }) {
                   </tr>
                 )}
               </thead>
-              <tbody className="divide-y divide-slate-800/50">
+              <tbody className="divide-y divide-slate-200">
                 {activeTab !== 'deferred' && filteredStudents?.length === 0 && (
                   <tr>
                     <td colSpan={activeTab === 'master' ? 9 : 7} className="px-6 py-20 text-center text-slate-500 text-sm italic">
@@ -1277,33 +1391,33 @@ export default function RegistryPanel({ user }) {
                 ) : activeTab === 'master' ? (
                   // MASTER LEDGER TABLE ROWS
                   filteredStudents?.map((s) => (
-                    <tr key={s._id} className="hover:bg-slate-800/20 transition-colors group">
+                    <tr key={s._id} className="hover:bg-slate-50 transition-colors group border-b border-slate-200">
                       <td className="px-6 py-5">
-                        <p className="text-xs font-bold text-white">{s.name}</p>
+                        <p className="text-xs font-bold text-slate-900">{s.name}</p>
                         <p className="text-[10px] text-slate-500 font-mono">{s.email}</p>
                       </td>
                       <td className="px-6 py-5">
                         <MaskedData value={s.rollNumber} type="text" />
                       </td>
                       <td className="px-6 py-5">
-                        <p className="text-xs font-bold text-white leading-tight">{s.program}</p>
+                        <p className="text-xs font-bold text-slate-900 leading-tight">{s.program}</p>
                         <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tighter">{s.faculty}</p>
                       </td>
                       <td className="px-6 py-5">
-                        <span className="text-xs font-mono text-slate-400">{s.academicYear}</span>
+                        <span className="text-xs font-mono text-slate-600">{s.academicYear}</span>
                       </td>
                       <td className="px-6 py-5">
-                        <span className="text-xs font-bold text-blue-400">Y{Math.ceil(s.semester/2)} S{s.semester % 2 || 2}</span>
+                        <span className="text-xs font-bold text-blue-600 font-sans">Y{Math.ceil(s.semester/2)} S{s.semester % 2 || 2}</span>
                       </td>
                       <td className="px-6 py-5">
                         {s.isFinanciallyCleared ? (
-                          <div className="flex items-center gap-1.5 text-xs text-emerald-450 font-bold bg-emerald-500/5 px-2.5 py-1.5 rounded-lg border border-emerald-500/10 w-fit">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-450" />
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 w-fit">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             Verified
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 text-xs text-amber-500/80 font-bold bg-amber-500/5 px-2.5 py-1.5 rounded-lg border border-amber-500/10 w-fit">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500/80" />
+                          <div className="flex items-center gap-1.5 text-xs text-amber-600 font-bold bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200 w-fit">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                             Pending
                           </div>
                         )}
@@ -1321,15 +1435,15 @@ export default function RegistryPanel({ user }) {
                           title={s.isFinanciallyCleared ? "Toggle transcript collection status" : "Blocked: Not cleared by Finance"}
                           className={`flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1.5 rounded-lg border transition-all ${
                             !s.isFinanciallyCleared
-                              ? "text-slate-500 bg-slate-800/40 border-slate-800 cursor-not-allowed opacity-50"
+                              ? "text-slate-400 bg-slate-50 border-slate-200 cursor-not-allowed opacity-50"
                               : s.transcriptRemoved 
-                              ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20" 
-                              : "text-slate-400 bg-slate-800 hover:bg-slate-700 border-slate-700"
+                              ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-200" 
+                              : "text-slate-600 bg-slate-100 hover:bg-slate-200 border-slate-300"
                           }`}
                         >
                           {s.transcriptRemoved ? (
                             <>
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                               Removed
                             </>
                           ) : (
@@ -1344,25 +1458,83 @@ export default function RegistryPanel({ user }) {
                         <select
                           value={s.registryStatus}
                           onChange={(e) => handleStatusChange(s._id, e.target.value)}
-                          className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border bg-transparent outline-none cursor-pointer ${
-                            s.registryStatus === 'active' ? 'text-emerald-400 border-emerald-500/20' : 
-                            s.registryStatus === 'graduated' ? 'text-blue-400 border-blue-500/20' :
-                            s.registryStatus === 'suspended' ? 'text-red-400 border-red-500/20' :
-                            'text-orange-400 border-orange-500/20'
+                          className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border bg-white outline-none cursor-pointer ${
+                            s.registryStatus === 'active' ? 'text-emerald-600 border-emerald-300' : 
+                            s.registryStatus === 'graduated' ? 'text-blue-600 border-blue-300' :
+                            s.registryStatus === 'suspended' ? 'text-red-600 border-red-300' :
+                            'text-orange-600 border-orange-300'
                           }`}
                         >
-                          <option value="active">Active</option>
-                          <option value="suspended">Suspended</option>
-                          <option value="graduated">Graduated</option>
-                          <option value="deferred">Deferred</option>
+                          <option value="active" className="text-slate-900 bg-white">Active</option>
+                          <option value="suspended" className="text-slate-900 bg-white">Suspended</option>
+                          <option value="graduated" className="text-slate-900 bg-white">Graduated</option>
+                          <option value="deferred" className="text-slate-900 bg-white">Deferred</option>
                         </select>
                       </td>
-                      <td className="px-6 py-5 text-right">
+                      <td className="px-6 py-5 text-right flex items-center justify-end gap-2.5">
+                        <button
+                          onClick={async () => {
+                            const confirmMsg = s.needsRepeat 
+                              ? `Remove repeat standing flag for ${s.name}?` 
+                              : `Flag ${s.name} to repeat the current level? This blocks semester promotion.`;
+                            if (confirm(confirmMsg)) {
+                              try {
+                                await toggleNeedsRepeat({
+                                  requesterId: user._id || user.userId,
+                                  studentId: s._id,
+                                  needsRepeat: !s.needsRepeat,
+                                });
+                              } catch (err) {
+                                alert(err instanceof Error ? err.message : "Action failed");
+                              }
+                            }
+                          }}
+                          className={`text-[10px] font-black uppercase px-2.5 py-1.5 rounded-lg border transition-all ${
+                            s.needsRepeat 
+                              ? "text-rose-600 bg-rose-50 border-rose-200 hover:bg-rose-100" 
+                              : "text-slate-500 bg-slate-50 border-slate-200 hover:bg-slate-100"
+                          }`}
+                          title={s.needsRepeat ? "Repeat standing active" : "Flag repeat standing"}
+                        >
+                          {s.needsRepeat ? "Repeating" : "Flag Repeat"}
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            if (s.needsRepeat) {
+                              alert("Promotion Blocked: Student is flagged to repeat the current level.");
+                              return;
+                            }
+                            const input = prompt(`Enter rollover tuition fee amount to bill for Semester ${s.semester + 1} (SLE):`, "7500");
+                            if (input === null) return;
+                            const amount = parseFloat(input);
+                            if (isNaN(amount) || amount < 0) {
+                              alert("Please enter a valid positive number.");
+                              return;
+                            }
+                            if (confirm(`Promote ${s.name} to Semester ${s.semester + 1}? Billed amount: ${amount} SLE.`)) {
+                              try {
+                                await promoteMutation({
+                                  requesterId: user._id || user.userId,
+                                  studentId: s._id,
+                                  feeAmount: amount,
+                                });
+                                alert(`${s.name} has been promoted and billed successfully!`);
+                              } catch (err) {
+                                alert(err instanceof Error ? err.message : "Promotion failed");
+                              }
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-250 px-2.5 py-1.5 rounded-lg"
+                        >
+                          Promote
+                        </button>
+
                         <button
                           onClick={() => setSelectedStudent(s)}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg border border-blue-500/20"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200"
                         >
-                          <FileText className="w-3.5 h-3.5" /> Academic Records
+                          <FileText className="w-3.5 h-3.5" /> Records
                         </button>
                       </td>
                     </tr>
@@ -1370,42 +1542,42 @@ export default function RegistryPanel({ user }) {
                 ) : (
                   // EXAM SLIPS TABLE ROWS
                   filteredStudents?.map((s, index) => (
-                    <tr key={s._id} className="hover:bg-slate-800/20 transition-colors group">
+                    <tr key={s._id} className="hover:bg-slate-50 transition-colors group border-b border-slate-200">
                       <td className="px-6 py-5 text-xs font-bold text-slate-400">{index + 1}</td>
                       <td className="px-6 py-5">
-                        <span className="font-mono text-xs font-bold text-white">{s.rollNumber}</span>
+                        <span className="font-mono text-xs font-bold text-slate-800">{s.rollNumber}</span>
                       </td>
                       <td className="px-6 py-5">
-                        <p className="text-xs font-bold text-white">{s.name}</p>
+                        <p className="text-xs font-bold text-slate-900">{s.name}</p>
                         <p className="text-[10px] text-slate-500 font-mono">{s.email}</p>
                       </td>
                       <td className="px-6 py-5">
                         <span className={`text-xs font-bold uppercase tracking-wider ${
-                          s.gender?.toLowerCase() === 'female' ? 'text-pink-400' : 
-                          s.gender?.toLowerCase() === 'male' ? 'text-sky-400' : 'text-slate-500'
+                          s.gender?.toLowerCase() === 'female' ? 'text-pink-650' : 
+                          s.gender?.toLowerCase() === 'male' ? 'text-sky-650' : 'text-slate-500'
                         }`}>
                           {s.gender || '—'}
                         </span>
                       </td>
                       <td className="px-6 py-5">
-                        <p className="text-xs font-semibold text-slate-350 truncate max-w-[200px]" title={s.program}>{s.program}</p>
+                        <p className="text-xs font-semibold text-slate-700 truncate max-w-[200px]" title={s.program}>{s.program}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[9px] font-bold text-blue-400 uppercase">Sem {s.semester}</span>
-                          <span className="text-slate-600 text-[8px]">•</span>
+                          <span className="text-[9px] font-bold text-blue-600 uppercase">Sem {s.semester}</span>
+                          <span className="text-slate-400 text-[8px]">•</span>
                           {s.isFinanciallyCleared ? (
-                            <span className="text-[9px] font-black text-emerald-450 bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase border border-emerald-500/15">Fees Paid</span>
+                            <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase border border-emerald-100">Fees Paid</span>
                           ) : (
-                            <span className="text-[9px] font-black text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded uppercase border border-rose-500/15">Fees Unpaid</span>
+                            <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded uppercase border border-rose-100">Fees Unpaid</span>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-5">
                         {s.isFinanciallyCleared ? (
-                          <span className="font-mono text-xs font-black text-slate-200 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-md">
+                          <span className="font-mono text-xs font-black text-slate-800 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
                             {getUniqueCode(s.rollNumber)}
                           </span>
                         ) : (
-                          <span className="font-mono text-xs font-black text-rose-455 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-md uppercase tracking-wider">
+                          <span className="font-mono text-xs font-black text-rose-650 bg-rose-50 border border-rose-150 px-2.5 py-1 rounded-md uppercase tracking-wider">
                             Blocked
                           </span>
                         )}

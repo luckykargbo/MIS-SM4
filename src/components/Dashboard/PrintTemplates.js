@@ -939,3 +939,277 @@ export function printTuitionInvoice(student, finance) {
   printWindow.document.close();
 }
 
+export function printTuitionReceipt(student, transaction) {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert("Please allow popups to print the tuition receipt.");
+    return;
+  }
+
+  const logoUrl = window.location.origin + '/limkokwing_logo.jpg';
+  const receiptNum = `RCP-${transaction._id.substring(0, 8).toUpperCase()}`;
+  const paymentDate = new Date(transaction.timestamp).toLocaleString();
+  const uniqueSecCode = getUniqueCode(transaction._id);
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Official Tuition Receipt - ${student.rollNumber}</title>
+      <style>
+        @page {
+          size: A5 landscape;
+          margin: 10mm;
+        }
+        body {
+          font-family: 'Segoe UI', Arial, sans-serif;
+          color: #1e293b;
+          margin: 0;
+          padding: 0;
+          font-size: 11px;
+          line-height: 1.4;
+        }
+        .receipt-container {
+          border: 2px solid #0f172a;
+          border-radius: 16px;
+          padding: 20px;
+          background-color: #fff;
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+          position: relative;
+          min-height: 125mm;
+          box-sizing: border-box;
+        }
+        .header-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 2px solid #0f172a;
+          padding-bottom: 12px;
+          margin-bottom: 15px;
+        }
+        .logo-section {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .logo {
+          max-height: 45px;
+        }
+        .univ-name {
+          font-size: 12px;
+          font-weight: 800;
+          text-transform: uppercase;
+          color: #0f172a;
+        }
+        .univ-sub {
+          font-size: 8px;
+          font-weight: 700;
+          color: #64748b;
+          text-transform: uppercase;
+        }
+        .title-section {
+          text-align: right;
+        }
+        .receipt-title {
+          font-size: 16px;
+          font-weight: 900;
+          color: #10b981;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+        .receipt-number {
+          font-size: 10px;
+          font-family: monospace;
+          font-weight: 700;
+          color: #64748b;
+          margin-top: 2px;
+        }
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1.2fr 1fr;
+          gap: 15px;
+          margin-bottom: 15px;
+        }
+        .info-card {
+          background-color: #f8fafc;
+          border: 1px solid #f1f5f9;
+          border-radius: 8px;
+          padding: 10px 12px;
+        }
+        .card-title {
+          font-size: 8px;
+          font-weight: 800;
+          text-transform: uppercase;
+          color: #64748b;
+          letter-spacing: 0.5px;
+          border-bottom: 1px solid #e2e8f0;
+          padding-bottom: 4px;
+          margin-bottom: 6px;
+        }
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 3px;
+        }
+        .info-label {
+          color: #64748b;
+          font-weight: 600;
+        }
+        .info-val {
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .amount-section {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+          border-radius: 12px;
+          padding: 15px;
+          text-align: center;
+          margin-bottom: 15px;
+          box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2);
+        }
+        .amount-label {
+          font-size: 9px;
+          font-weight: bold;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          opacity: 0.9;
+        }
+        .amount-value {
+          font-size: 24px;
+          font-weight: 900;
+          font-family: monospace;
+          margin-top: 4px;
+        }
+        .footer-layout {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          margin-top: 15px;
+        }
+        .security-badge {
+          border: 2px dashed #10b981;
+          border-radius: 8px;
+          padding: 4px 10px;
+          display: inline-block;
+          background-color: #ecfdf5;
+          text-align: center;
+        }
+        .security-code {
+          font-size: 14px;
+          font-family: monospace;
+          font-weight: 900;
+          color: #059669;
+          letter-spacing: 1px;
+        }
+        .sig-block {
+          border-top: 1px solid #0f172a;
+          width: 150px;
+          text-align: center;
+          font-size: 8px;
+          margin-top: 30px;
+          padding-top: 4px;
+          font-weight: bold;
+        }
+        @media print {
+          body {
+            margin: 0;
+          }
+          .receipt-container {
+            border: 2px solid #000;
+            box-shadow: none;
+            padding: 15px;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="receipt-container">
+        <div class="header-container">
+          <div class="logo-section">
+            <img class="logo" src="${logoUrl}" alt="University Logo" />
+            <div>
+              <div class="univ-name">Limkokwing University</div>
+              <div class="univ-sub">Of Creative Technology · Sierra Leone Campus</div>
+            </div>
+          </div>
+          <div class="title-section">
+            <div class="receipt-title">Payment Receipt</div>
+            <div class="receipt-number">Receipt No: ${receiptNum}</div>
+          </div>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="card-title">Student Details</div>
+            <div class="info-row">
+              <span class="info-label">Name:</span>
+              <span class="info-val">${student.name}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Student ID:</span>
+              <span class="info-val">${student.rollNumber}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Program:</span>
+              <span class="info-val">${student.program}</span>
+            </div>
+          </div>
+
+          <div class="info-card">
+            <div class="card-title">Payment Metadata</div>
+            <div class="info-row">
+              <span class="info-label">Payment Date:</span>
+              <span class="info-val" style="font-size: 9px;">${paymentDate}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Method:</span>
+              <span class="info-val" style="text-transform: uppercase;">${transaction.method.replace('_', ' ')}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Reference No:</span>
+              <span class="info-val">${transaction.reference}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="amount-section">
+          <div class="amount-label">Verified Payment Amount</div>
+          <div class="amount-value">SLE ${Number(transaction.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+        </div>
+
+        <div class="footer-layout">
+          <div>
+            <div class="security-badge">
+              <div style="font-size: 7px; font-weight: bold; text-transform: uppercase; color: #555; margin-bottom: 2px;">Receipt Security Code</div>
+              <div class="security-code">${uniqueSecCode}</div>
+            </div>
+            <div style="font-size: 8px; color: #64748b; margin-top: 6px; font-weight: 500;">
+              * This is an officially verified electronic payment receipt.
+            </div>
+          </div>
+          <div>
+            <div class="sig-block">
+              Authorized Finance Department
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.onload = function() {
+          setTimeout(function() {
+            window.print();
+            window.close();
+          }, 300);
+        }
+      </script>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+}
+

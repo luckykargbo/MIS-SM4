@@ -9,22 +9,22 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // On mount, restore session from sessionStorage
+    // On mount, restore session from localStorage
     try {
-      const stored = sessionStorage.getItem('lusl_session');
+      const stored = localStorage.getItem('lusl_session');
       if (stored) setUser(JSON.parse(stored));
-    } catch {}
+    } catch (err) {}
     setLoading(false);
   }, []);
 
   const login = (userData) => {
     setUser(userData);
-    sessionStorage.setItem('lusl_session', JSON.stringify(userData));
+    localStorage.setItem('lusl_session', JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
-    sessionStorage.removeItem('lusl_session');
+    localStorage.removeItem('lusl_session');
     window.location.href = '/login';
   };
 

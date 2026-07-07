@@ -259,3 +259,69 @@ export const sendDeferredStatusEmail = action({
     await transporter.sendMail(mailOptions);
   },
 });
+
+export const sendAccountStatusEmail = action({
+  args: {
+    email: v.string(),
+    name: v.string(),
+    isActive: v.boolean(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_SERVER_HOST,
+      port: Number(process.env.EMAIL_SERVER_PORT),
+      auth: {
+        user: process.env.EMAIL_SERVER_USER,
+        pass: process.env.EMAIL_SERVER_PASSWORD,
+      },
+    });
+
+    const statusLabel = args.isActive ? "Activated / Restored" : "Suspended / Blocked";
+    const subject = `Your LUSL Account Has Been ${statusLabel}`;
+    
+    const htmlContent = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;">
+        <div style="background-color: ${args.isActive ? '#10B981' : '#EF4444'}; padding: 30px; text-align: center;">
+          <h2 style="color: white; margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;">LUSL MIS Alert</h2>
+          <p style="color: white; margin: 4px 0 0 0; font-size: 13px; font-weight: bold;">Account Status Update</p>
+        </div>
+        <div style="padding: 32px;">
+          <p style="font-size: 16px; color: #1e293b;">Hello <b>${args.name}</b>,</p>
+          <p style="color: #475569; line-height: 1.6; margin-bottom: 20px;">
+            This email is to notify you that your institutional account status has been updated by the administration.
+          </p>
+          <div style="background-color: #f8fafc; padding: 24px; border-radius: 12px; margin: 24px 0; border: 1px solid #cbd5e1; text-align: center;">
+            <p style="margin: 0; font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold;">Current Status</p>
+            <p style="margin: 6px 0 0 0; font-size: 22px; color: ${args.isActive ? '#10B981' : '#EF4444'}; font-weight: bold; text-transform: uppercase;">${statusLabel.toUpperCase()}</p>
+          </div>
+          ${args.reason ? `
+          <div style="margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold;">Reason / Comments</p>
+            <p style="margin: 6px 0 0 0; color: #1e293b; line-height: 1.5; font-style: italic;">"${args.reason}"</p>
+          </div>
+          ` : ''}
+          <p style="color: #475569; font-size: 13px; border-top: 1px solid #f1f5f9; padding-top: 16px; margin-top: 24px;">
+            If you believe this status change is in error, please contact the University Registry or Support Department immediately.
+          </p>
+        </div>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: '"LUSL MIS Portal" <noreply@limkokwing.edu.sl>',
+      to: args.email,
+      subject: subject,
+      html: htmlContent,
+      attachments: [
+        {
+          filename: 'limkokwing_logo.jpg',
+          path: 'https://raw.githubusercontent.com/luckykargbo/MIS-SM4/main/public/limkokwing_logo.jpg',
+          cid: 'limkokwing_logo'
+        }
+      ]
+    };
+
+    await transporter.sendMail(mailOptions);
+  },
+});

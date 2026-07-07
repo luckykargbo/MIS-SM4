@@ -12,7 +12,8 @@ export default defineSchema({
       v.literal("admin"),
       v.literal("finance"),
       v.literal("registry"),
-      v.literal("student")
+      v.literal("student"),
+      v.literal("lecturer")
     ),
     isActive: v.boolean(),
     createdBy: v.optional(v.id("users")), // Admin who provisioned this account
@@ -24,6 +25,8 @@ export default defineSchema({
     profileImage: v.optional(v.string()), // base64 representation of profile pic
     theme: v.optional(v.string()), // "light" or "dark"
     staffId: v.optional(v.string()), // unique identifier for administrative staff
+    department: v.optional(v.string()), // For lecturers
+    assignedCourses: v.optional(v.array(v.string())), // Course codes for lecturers
   })
     .index("by_email", ["email"])
     .index("by_role", ["role"]),
@@ -47,6 +50,7 @@ export default defineSchema({
     gender: v.optional(v.string()),
     transcriptRemoved: v.optional(v.boolean()),
     isPhysicallyVerified: v.optional(v.boolean()),
+    needsRepeat: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_userId", ["userId"])
@@ -91,13 +95,20 @@ export default defineSchema({
       v.literal("bank_transfer"),
       v.literal("mobile_money")
     ),
+    status: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("rejected")
+    )),
+    proofReceipt: v.optional(v.string()), // Receipt image URL or reference number
     reference: v.string(),
-    processedBy: v.id("users"),     // Finance staff who recorded it
+    processedBy: v.optional(v.id("users")), // Finance staff who verified it
     timestamp: v.number(),
     notes: v.optional(v.string()),
   })
     .index("by_studentId", ["studentId"])
-    .index("by_financeId", ["financeId"]),
+    .index("by_financeId", ["financeId"])
+    .index("by_status", ["status"]),
 
   // ─── ACADEMIC RECORDS TABLE ─────────────────────────────────
   // Individual course enrollments + grades (managed by Registry)
@@ -108,11 +119,18 @@ export default defineSchema({
     status: v.union(
       v.literal("Enrolled"),
       v.literal("Completed"),
-      v.literal("Deferred")
+      v.literal("Deferred"),
+      v.literal("Paused")
     ),
     grade: v.optional(v.string()),
     midtermStatus: v.optional(v.union(v.literal("Normal"), v.literal("Deferred"), v.literal("Completed"))),
     finalStatus: v.optional(v.union(v.literal("Normal"), v.literal("Deferred"), v.literal("Completed"))),
+    attendanceScore: v.optional(v.number()),
+    presentationScore: v.optional(v.number()),
+    testScore: v.optional(v.number()),
+    examScore: v.optional(v.number()),
+    totalScore: v.optional(v.number()),
+    isLocked: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_studentId", ["studentId"])
@@ -175,6 +193,7 @@ export default defineSchema({
     missedDate: v.string(),
     modules: v.string(),
     evidenceName: v.optional(v.string()),
+    evidenceBase64: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
     createdAt: v.number(),
   })
@@ -212,5 +231,86 @@ export default defineSchema({
   })
     .index("by_email", ["email"])
     .index("by_status", ["status"]),
+
+  academicAuditLogs: defineTable({
+    actorId: v.id("users"),
+    studentId: v.id("students"),
+    action: v.union(
+      v.literal("grade_change"),
+      v.literal("status_change"),
+      v.literal("course_status_change"),
+      v.literal("exam_status_change"),
+      v.literal("transcript_status_change")
+    ),
+    details: v.string(),
+    timestamp: v.number(),
+  })
+    .index("by_studentId", ["studentId"])
+    .index("by_actorId", ["actorId"]),
+
+  gradeCorrectionRequests: defineTable({
+    lecturerId: v.id("users"),
+    recordId: v.id("academicRecords"),
+    studentName: v.string(),
+    courseCode: v.string(),
+    proposedAttendance: v.number(),
+    proposedPresentation: v.number(),
+    proposedTest: v.number(),
+    proposedExam: v.number(),
+    proposedGrade: v.string(),
+    reason: v.string(),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    createdAt: v.number(),
+  })
+    .index("by_lecturerId", ["lecturerId"])
+    .index("by_status", ["status"]),
+
+  assignments: defineTable({
+    lecturerId: v.id("users"),
+    courseCode: v.string(),
+    title: v.string(),
+    description: v.string(),
+    fileBase64: v.optional(v.string()),
+    fileName: v.optional(v.string()),
+    dueDate: v.string(),
+    type: v.union(v.literal("Assignment"), v.literal("Project")),
+    createdAt: v.number(),
+  })
+    .index("by_courseCode", ["courseCode"])
+    .index("by_lecturerId", ["lecturerId"]),
+
+  transcriptApplications: defineTable({
+    studentId: v.id("users"),
+    studentName: v.string(),
+    rollNumber: v.string(),
+    program: v.string(),
+    semester: v.number(),
+    status: v.union(
+      v.literal("Pending_Finance"),
+      v.literal("Pending_Registry"),
+      v.literal("Collected"),
+      v.literal("Rejected")
+    ),
+    verificationCode: v.optional(v.string()),
+    financeApprovedAt: v.optional(v.number()),
+    financeApproverName: v.optional(v.string()),
+    registryDispatchedAt: v.optional(v.number()),
+    rejectionReason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_studentId", ["studentId"])
+    .index("by_status", ["status"])
+    .index("by_verificationCode", ["verificationCode"]),
+
+  // ─── ACADEMIC CALENDAR SETTINGS TABLE ─────────────────────────
+  academicSettings: defineTable({
+    reopeningDate: v.number(),          // Unix timestamp
+    registrationDeadline: v.number(),   // Unix timestamp
+    currentAcademicYear: v.string(),    // e.g. "2025/2026"
+    currentSemester: v.number(),        // e.g. 1
+    isRegistrationOpen: v.boolean(),
+    lastUpdatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }),
 });
 

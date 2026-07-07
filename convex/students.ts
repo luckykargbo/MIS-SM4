@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
+import { api } from "./_generated/api";
 
 // ─────────────────────────────────────────────────────────────────
 // [ADMIN + REGISTRY] Get full student list (no financial data)
@@ -135,9 +136,59 @@ export const updateStudentStatus = mutation({
       throw new ConvexError("Access Denied: Registry Staff or Admin only.");
     }
 
+    const student = await ctx.db.get(args.studentId);
+    if (!student) throw new ConvexError("Student profile not found.");
+    const oldStatus = student.registryStatus;
+
+    // Adjust enrolled courses status based on program pause/resume
+    const courses = await ctx.db
+      .query("academicRecords")
+      .withIndex("by_studentId", (q) => q.eq("studentId", args.studentId))
+      .collect();
+
+    let coursesChanged = 0;
+    if (args.registryStatus === "suspended" || args.registryStatus === "deferred") {
+      // Pause all currently enrolled courses
+      for (const rec of courses) {
+        if (rec.status === "Enrolled") {
+          await ctx.db.patch(rec._id, { status: "Paused" });
+          coursesChanged++;
+        }
+      }
+    } else if (args.registryStatus === "active") {
+      // Resume all previously paused courses
+      for (const rec of courses) {
+        if (rec.status === "Paused") {
+          await ctx.db.patch(rec._id, { status: "Enrolled" });
+          coursesChanged++;
+        }
+      }
+    }
+
     await ctx.db.patch(args.studentId, {
       registryStatus: args.registryStatus,
     });
+
+    await ctx.db.insert("academicAuditLogs", {
+      actorId: args.requesterId,
+      studentId: args.studentId,
+      action: "status_change",
+      details: `Changed registry status from "${oldStatus}" to "${args.registryStatus}". Courses updated: ${coursesChanged}.`,
+      timestamp: Date.now(),
+    });
+
+    // Schedule automated email alert to student
+    const userDoc = await ctx.db.get(student.userId);
+    if (userDoc) {
+      const isStudentActive = args.registryStatus === "active";
+      await ctx.scheduler.runAfter(0, api.emails.sendAccountStatusEmail, {
+        email: userDoc.email,
+        name: userDoc.name,
+        isActive: isStudentActive,
+        reason: `Your student registry academic status has been updated to "${args.registryStatus.toUpperCase()}" by LUSL Academic Registry.`
+      });
+    }
+
     return { success: true };
   },
 });
@@ -260,6 +311,7 @@ export const assignGrade = mutation({
 
     const record = await ctx.db.get(args.recordId);
     if (!record) throw new ConvexError("Academic record not found.");
+    const oldGrade = record.grade || "None";
 
     // Validate grade format (A+, A, A-, B+, B, B-, C+, C, C-, D, F)
     const validGrades = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"];
@@ -270,6 +322,14 @@ export const assignGrade = mutation({
     await ctx.db.patch(args.recordId, {
       grade: args.grade,
       status: "Completed",
+    });
+
+    await ctx.db.insert("academicAuditLogs", {
+      actorId: args.requesterId,
+      studentId: record.studentId,
+      action: "grade_change",
+      details: `Assigned grade "${args.grade}" for course code "${record.courseCode}" (previously: "${oldGrade}")`,
+      timestamp: Date.now(),
     });
 
     return { success: true };
@@ -334,8 +394,18 @@ export const updateCourseStatus = mutation({
 
     const record = await ctx.db.get(args.recordId);
     if (!record) throw new ConvexError("Academic record not found.");
+    const oldStatus = record.status;
 
     await ctx.db.patch(args.recordId, { status: args.status });
+
+    await ctx.db.insert("academicAuditLogs", {
+      actorId: args.requesterId,
+      studentId: record.studentId,
+      action: "course_status_change",
+      details: `Changed course status for "${record.courseCode}" from "${oldStatus}" to "${args.status}"`,
+      timestamp: Date.now(),
+    });
+
     return { success: true };
   },
 });
@@ -505,12 +575,22 @@ export const updateExamStatus = mutation({
 
     const record = await ctx.db.get(args.recordId);
     if (!record) throw new ConvexError("Academic record not found.");
+    const oldStatus = args.type === "midterm" ? (record.midtermStatus || "Normal") : (record.finalStatus || "Normal");
 
     if (args.type === "midterm") {
       await ctx.db.patch(args.recordId, { midtermStatus: args.status });
     } else {
       await ctx.db.patch(args.recordId, { finalStatus: args.status });
     }
+
+    await ctx.db.insert("academicAuditLogs", {
+      actorId: args.requesterId,
+      studentId: record.studentId,
+      action: "exam_status_change",
+      details: `Changed ${args.type} exam status for "${record.courseCode}" from "${oldStatus}" to "${args.status}"`,
+      timestamp: Date.now(),
+    });
+
     return { success: true };
   },
 });
@@ -566,10 +646,21 @@ export const updateTranscriptStatus = mutation({
 
     const student = await ctx.db.get(args.studentId);
     if (!student) throw new ConvexError("Student profile not found.");
+    const oldVal = student.transcriptRemoved ? "Held/Removed" : "Available";
+    const newVal = args.transcriptRemoved ? "Held/Removed" : "Available";
 
     await ctx.db.patch(args.studentId, {
       transcriptRemoved: args.transcriptRemoved,
     });
+
+    await ctx.db.insert("academicAuditLogs", {
+      actorId: args.requesterId,
+      studentId: args.studentId,
+      action: "transcript_status_change",
+      details: `Changed transcript clearance from "${oldVal}" to "${newVal}"`,
+      timestamp: Date.now(),
+    });
+
     return { success: true };
   },
 });
@@ -589,6 +680,7 @@ export const submitDeferredApplication = mutation({
     missedDate: v.string(),
     modules: v.string(),
     evidenceName: v.optional(v.string()),
+    evidenceBase64: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("deferredApplications", {
@@ -602,6 +694,7 @@ export const submitDeferredApplication = mutation({
       missedDate: args.missedDate,
       modules: args.modules,
       evidenceName: args.evidenceName,
+      evidenceBase64: args.evidenceBase64,
       status: "pending",
       createdAt: Date.now(),
     });
@@ -723,6 +816,178 @@ export const updateDeferredApplicationStatus = mutation({
       }
     }
 
+    return { success: true };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────
+// [ADMIN ONLY] List academic audit logs
+// ─────────────────────────────────────────────────────────────────
+export const getAcademicAuditLogs = query({
+  args: { requesterId: v.id("users") },
+  handler: async (ctx, args) => {
+    const requester = await ctx.db.get(args.requesterId);
+    if (!requester || requester.role !== "admin") {
+      throw new ConvexError("Access Denied: Administrators only.");
+    }
+
+    const logs = await ctx.db.query("academicAuditLogs").order("desc").collect();
+    const result = [];
+    for (const log of logs) {
+      const actor = await ctx.db.get(log.actorId);
+      const student = await ctx.db.get(log.studentId);
+      let studentName = "Unknown Student";
+      let rollNumber = "N/A";
+      if (student) {
+        rollNumber = student.rollNumber;
+        const u = await ctx.db.get(student.userId);
+        if (u) {
+          studentName = u.name;
+        }
+      }
+      result.push({
+        ...log,
+        actorName: actor ? actor.name : "System / Unknown",
+        studentName,
+        rollNumber,
+      });
+    }
+    return result;
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────
+// [REGISTRY + ADMIN] Promote student to next semester / year level
+// ─────────────────────────────────────────────────────────────────
+export const promoteStudent = mutation({
+  args: {
+    requesterId: v.id("users"),
+    studentId: v.id("students"),
+    feeAmount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const requester = await ctx.db.get(args.requesterId);
+    if (!requester || (requester.role !== "registry" && requester.role !== "admin")) {
+      throw new ConvexError("Access Denied: Registry or Admins only.");
+    }
+
+    const student = await ctx.db.get(args.studentId);
+    if (!student) throw new ConvexError("Student not found.");
+
+    // Check repeat status
+    if (student.needsRepeat) {
+      throw new ConvexError("Promotion Blocked: This student is flagged to repeat the current level and cannot be promoted.");
+    }
+
+    // Check for failing grades (F)
+    const failingRecords = await ctx.db
+      .query("academicRecords")
+      .withIndex("by_studentId", (q: any) => q.eq("studentId", args.studentId))
+      .filter((q: any) => q.eq(q.field("grade"), "F"))
+      .collect();
+    if (failingRecords.length > 0) {
+      throw new ConvexError(`Promotion Blocked: Student has failed courses (${failingRecords.map(r => r.courseCode).join(", ")}) and must repeat them.`);
+    }
+
+    const currentSemester = student.semester;
+    const nextSemester = currentSemester + 1;
+    let nextAcademicYear = student.academicYear;
+
+    if (currentSemester % 2 === 0) {
+      // e.g. Semester 2 -> 3, Academic Year rollover
+      const parts = nextAcademicYear.split("/");
+      if (parts.length === 2) {
+        const y1 = parseInt(parts[0]) + 1;
+        const y2 = parseInt(parts[1]) + 1;
+        nextAcademicYear = `${y1}/${y2}`;
+      }
+    }
+
+    // Update student registry standings
+    await ctx.db.patch(args.studentId, {
+      semester: nextSemester,
+      academicYear: nextAcademicYear,
+      enrolledCourses: [], // Reset enrolled courses so they can register for the new semester
+    });
+
+    // Update finance billing
+    const financeRecord = await ctx.db
+      .query("finance")
+      .withIndex("by_studentId", (q: any) => q.eq("studentId", args.studentId))
+      .first();
+
+    const invoiceDesc = `Tuition Fee Rollover - Semester ${nextSemester} (${nextAcademicYear})`;
+
+    if (!financeRecord) {
+      await ctx.db.insert("finance", {
+        studentId: args.studentId,
+        academicYear: nextAcademicYear,
+        semester: nextSemester,
+        tuitionFee: args.feeAmount,
+        amountPaid: 0,
+        balance: args.feeAmount,
+        isCleared: false,
+        invoiceLines: [
+          {
+            description: invoiceDesc,
+            amount: args.feeAmount,
+            date: Date.now(),
+          }
+        ],
+        lastUpdatedBy: args.requesterId,
+        updatedAt: Date.now(),
+      });
+    } else {
+      const newTuitionFee = financeRecord.tuitionFee + args.feeAmount;
+      const newBalance = financeRecord.balance + args.feeAmount;
+      const updatedInvoiceLines = [...financeRecord.invoiceLines, {
+        description: invoiceDesc,
+        amount: args.feeAmount,
+        date: Date.now(),
+      }];
+
+      await ctx.db.patch(financeRecord._id, {
+        tuitionFee: newTuitionFee,
+        balance: newBalance,
+        isCleared: newBalance <= 0,
+        invoiceLines: updatedInvoiceLines,
+        academicYear: nextAcademicYear,
+        semester: nextSemester,
+        lastUpdatedBy: args.requesterId,
+        updatedAt: Date.now(),
+      });
+    }
+
+    // Log academic audit record
+    await ctx.db.insert("academicAuditLogs", {
+      actorId: args.requesterId,
+      studentId: args.studentId,
+      action: "status_change",
+      details: `Promoted student from Semester ${currentSemester} to Semester ${nextSemester}. Billed rollover tuition fee of ${args.feeAmount} SLE.`,
+      timestamp: Date.now(),
+    });
+
+    return { success: true, nextSemester, nextAcademicYear };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────
+// [REGISTRY + ADMIN] Flag student to repeat current level
+// ─────────────────────────────────────────────────────────────────
+export const toggleNeedsRepeat = mutation({
+  args: {
+    requesterId: v.id("users"),
+    studentId: v.id("students"),
+    needsRepeat: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const requester = await ctx.db.get(args.requesterId);
+    if (!requester || (requester.role !== "registry" && requester.role !== "admin")) {
+      throw new ConvexError("Access Denied.");
+    }
+    await ctx.db.patch(args.studentId, {
+      needsRepeat: args.needsRepeat,
+    });
     return { success: true };
   },
 });

@@ -236,13 +236,15 @@ export const createUser = mutation({
     requesterId: v.string(),
     name: v.string(),
     email: v.string(),
-    role: v.union(v.literal("admin"), v.literal("finance"), v.literal("registry"), v.literal("student")),
+    role: v.union(v.literal("admin"), v.literal("finance"), v.literal("registry"), v.literal("student"), v.literal("lecturer")),
     passwordHash: v.optional(v.string()),
     plainPassword: v.optional(v.string()),
     program: v.optional(v.string()),
     profileImage: v.optional(v.string()),
     academicYear: v.optional(v.string()),
     tuitionFee: v.optional(v.number()),
+    department: v.optional(v.string()),
+    assignedCourses: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const reqId = ctx.db.normalizeId("users", args.requesterId);
@@ -325,6 +327,8 @@ export const createUser = mutation({
       createdBy: reqId,
       profileImage: args.profileImage,
       staffId,
+      department: args.department,
+      assignedCourses: args.assignedCourses,
     });
 
     // Handle student creation dependencies
@@ -497,10 +501,49 @@ export const getDashboardStats = query({
       (l) => l.event === "login_failure" || l.event === "otp_failure"
     ).length;
 
+    const students = await ctx.db.query("students").collect();
+    const facultyCounts: Record<string, number> = {};
+    const genderCounts = { Male: 0, Female: 0, Unspecified: 0 };
+
+    students.forEach((s) => {
+      const fac = s.faculty || "Other";
+      facultyCounts[fac] = (facultyCounts[fac] || 0) + 1;
+
+      const gen = (s.gender || "").toLowerCase().trim();
+      if (gen === "male" || gen === "m" || gen === "boy") {
+        genderCounts.Male++;
+      } else if (gen === "female" || gen === "f" || gen === "girl") {
+        genderCounts.Female++;
+      } else {
+        genderCounts.Unspecified++;
+      }
+    });
+
+    // Sort students descending by creation time to find the newest registered student
+    const sortedStudents = [...students].sort((a, b) => (b.createdAt || b._creationTime) - (a.createdAt || a._creationTime));
+    const newestStudent = sortedStudents[0] || null;
+    let newestStudentDetails = null;
+    if (newestStudent) {
+      const userDoc = await ctx.db.get(newestStudent.userId);
+      newestStudentDetails = {
+        name: userDoc ? userDoc.name : "Unknown",
+        rollNumber: newestStudent.rollNumber,
+        program: newestStudent.program,
+        faculty: newestStudent.faculty,
+        enrollmentDate: new Date(newestStudent.createdAt || newestStudent._creationTime).toLocaleDateString()
+      };
+    }
+
     return {
       totalUsers: allUsers.length,
       activeSessions: activeSessions.length,
       systemAlerts,
+      studentStats: {
+        totalStudents: students.length,
+        facultyCounts,
+        genderCounts
+      },
+      newestStudentDetails
     };
   },
 });
@@ -523,6 +566,17 @@ export const toggleUserActive = mutation({
     if (!target) throw new ConvexError("User not found.");
 
     await ctx.db.patch(targetId, { isActive: args.isActive });
+    
+    // Dispatch automated email notification
+    await ctx.scheduler.runAfter(0, api.emails.sendAccountStatusEmail, {
+      email: target.email,
+      name: target.name,
+      isActive: args.isActive,
+      reason: args.isActive 
+        ? "Your account access has been fully restored. You can now log back into the MIS portal." 
+        : "Your account access has been suspended due to an administrative review. Please contact the administrator."
+    });
+
     return { success: true };
   }
 });
@@ -718,4 +772,112 @@ export const backfillStaffAndSendEmails = mutation({
 
     return { success: true, updated: updatedUsers };
   },
+});
+
+export const getDetailedAnalytics = query({
+  args: { requesterId: v.string() },
+  handler: async (ctx, args) => {
+    const reqId = ctx.db.normalizeId("users", args.requesterId);
+    if (!reqId) throw new ConvexError("Invalid requester ID.");
+
+    const requester = await ctx.db.get(reqId);
+    if (!requester || (requester.role !== "admin" && requester.role !== "registry" && requester.role !== "finance")) {
+      throw new ConvexError("Access Denied.");
+    }
+
+    const students = await ctx.db.query("students").collect();
+    const courses = await ctx.db.query("courses").collect();
+    const records = await ctx.db.query("academicRecords").collect();
+    const logs = await ctx.db.query("securityLogs").collect();
+    const finance = await ctx.db.query("finance").collect();
+
+    let satExams = 0;
+    let deferredExams = 0;
+    records.forEach(r => {
+      if (r.midtermStatus === 'Deferred' || r.finalStatus === 'Deferred') {
+        deferredExams++;
+      } else {
+        satExams++;
+      }
+    });
+
+    let totalAttendance = 0, countAttendance = 0;
+    let totalPresentation = 0, countPresentation = 0;
+    let totalTest = 0, countTest = 0;
+    let totalExam = 0, countExam = 0;
+
+    records.forEach(r => {
+      if (r.attendanceScore !== undefined) {
+        totalAttendance += r.attendanceScore;
+        countAttendance++;
+      }
+      if (r.presentationScore !== undefined) {
+        totalPresentation += r.presentationScore;
+        countPresentation++;
+      }
+      if (r.testScore !== undefined) {
+        totalTest += r.testScore;
+        countTest++;
+      }
+      if (r.examScore !== undefined) {
+        totalExam += r.examScore;
+        countExam++;
+      }
+    });
+
+    const averageScores = {
+      attendance: countAttendance > 0 ? Number((totalAttendance / countAttendance).toFixed(1)) : 0,
+      presentation: countPresentation > 0 ? Number((totalPresentation / countPresentation).toFixed(1)) : 0,
+      test: countTest > 0 ? Number((totalTest / countTest).toFixed(1)) : 0,
+      exam: countExam > 0 ? Number((totalExam / countExam).toFixed(1)) : 0,
+    };
+
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recentLogs = logs.filter(l => l.timestamp >= sevenDaysAgo);
+
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const trafficMap = new Map();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const label = dayNames[d.getDay()] + " " + d.getDate();
+      trafficMap.set(label, { label, logins: 0, alerts: 0, gradeChanges: 0 });
+    }
+
+    recentLogs.forEach(l => {
+      const d = new Date(l.timestamp);
+      const label = dayNames[d.getDay()] + " " + d.getDate();
+      if (trafficMap.has(label)) {
+        const item = trafficMap.get(label);
+        if (l.event === 'login_success') item.logins++;
+        else if (l.event === 'login_failure' || l.event === 'otp_failure') item.alerts++;
+        else if (l.event === 'grade_change') item.gradeChanges++;
+      }
+    });
+
+    const logTraffic = Array.from(trafficMap.values());
+
+    let clearedCount = 0;
+    let arrearsCount = 0;
+    finance.forEach(f => {
+      if (f.isCleared) clearedCount++;
+      else arrearsCount++;
+    });
+
+    return {
+      studentCount: students.length,
+      courseCount: courses.length,
+      recordsCount: records.length,
+      logsCount: logs.length,
+      examSitting: {
+        sat: satExams,
+        deferred: deferredExams
+      },
+      averageScores,
+      logTraffic,
+      tuitionRatio: {
+        cleared: clearedCount,
+        arrears: arrearsCount
+      }
+    };
+  }
 });

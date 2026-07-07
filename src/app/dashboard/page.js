@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   LayoutDashboard, Users, Wallet, BookOpen, Settings, FileText,
   LogOut, Bell, Search, Menu, X, ShieldAlert, ShieldCheck,
@@ -234,6 +234,173 @@ function AdminOverview({ user, stats }) {
 
   return (
     <div className="space-y-8 text-slate-800 dark:text-slate-100">
+      {/* TOP ROW: Dynamic Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex items-center gap-5">
+          <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-650">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Users</p>
+            <p className="text-3xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{stats?.totalUsers ?? '...'}</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex items-center gap-5">
+          <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/30 rounded-xl flex items-center justify-center text-blue-500">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Active Sessions</p>
+            <p className="text-3xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{stats?.activeSessions ?? '...'}</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex items-center gap-5">
+          <div className="w-12 h-12 bg-red-50 dark:bg-red-950/20 rounded-xl flex items-center justify-center text-red-500">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">System Alerts</p>
+            <p className="text-3xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{stats?.systemAlerts ?? '...'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Student Enrollment Statistics & Faculty Demographics */}
+      {stats?.studentStats && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Student Enrollment Demographics</h3>
+            <p className="text-xs text-slate-450 dark:text-slate-500 font-medium mt-0.5">Real-time statistics by gender ratio and faculty distribution</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Gender Ratio Card (Circle Demographics) */}
+            <div className="space-y-4 bg-slate-50 dark:bg-slate-950/20 p-6 rounded-2xl border border-slate-100 dark:border-slate-850 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Gender Demographics</span>
+                <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  Total: {stats.studentStats.totalStudents} Students
+                </span>
+              </div>
+
+              {/* Circle Graph Visualization */}
+              <div className="flex items-center justify-around gap-6 py-4 flex-wrap">
+                {/* Donut Chart using HTML SVG */}
+                <div className="relative w-36 h-36 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    {/* Background Circle */}
+                    <circle cx="18" cy="18" r="15.915" fill="none" stroke="var(--circle-bg, #334155)" strokeWidth="3" className="opacity-15 dark:opacity-40" />
+                    {/* Male Segment (Blue) */}
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="15.915"
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="3.2"
+                      strokeDasharray={`${stats.studentStats.totalStudents > 0 ? Math.round((stats.studentStats.genderCounts.Male / stats.studentStats.totalStudents) * 100) : 0} ${stats.studentStats.totalStudents > 0 ? 100 - Math.round((stats.studentStats.genderCounts.Male / stats.studentStats.totalStudents) * 100) : 100}`}
+                      strokeDashoffset="0"
+                    />
+                    {/* Female Segment (Pink) */}
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="15.915"
+                      fill="none"
+                      stroke="#ec4899"
+                      strokeWidth="3.2"
+                      strokeDasharray={`${stats.studentStats.totalStudents > 0 ? Math.round((stats.studentStats.genderCounts.Female / stats.studentStats.totalStudents) * 100) : 0} ${stats.studentStats.totalStudents > 0 ? 100 - Math.round((stats.studentStats.genderCounts.Female / stats.studentStats.totalStudents) * 100) : 100}`}
+                      strokeDashoffset={`-${stats.studentStats.totalStudents > 0 ? Math.round((stats.studentStats.genderCounts.Male / stats.studentStats.totalStudents) * 100) : 0}`}
+                    />
+                  </svg>
+                  <div className="absolute flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.studentStats.totalStudents}</span>
+                    <span className="text-[8px] font-bold text-slate-450 uppercase tracking-widest">Enrolled</span>
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="space-y-3 font-semibold text-xs text-slate-655 dark:text-slate-300 min-w-[120px]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-blue-500 shrink-0" />
+                    <div className="flex-grow">
+                      <div className="flex justify-between">
+                        <span>Male (Boys)</span>
+                        <span className="font-bold text-slate-805 dark:text-white">{stats.studentStats.genderCounts.Male}</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400">
+                        {stats.studentStats.totalStudents > 0 ? Math.round((stats.studentStats.genderCounts.Male / stats.studentStats.totalStudents) * 100) : 0}% Ratio
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-pink-500 shrink-0" />
+                    <div className="flex-grow">
+                      <div className="flex justify-between">
+                        <span>Female (Girls)</span>
+                        <span className="font-bold text-slate-805 dark:text-white">{stats.studentStats.genderCounts.Female}</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400">
+                        {stats.studentStats.totalStudents > 0 ? Math.round((stats.studentStats.genderCounts.Female / stats.studentStats.totalStudents) * 100) : 0}% Ratio
+                      </div>
+                    </div>
+                  </div>
+
+                  {stats.studentStats.genderCounts.Unspecified > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full bg-slate-400 shrink-0" />
+                      <div className="flex-grow">
+                        <div className="flex justify-between">
+                          <span>Unspecified</span>
+                          <span className="font-bold text-slate-805 dark:text-white">{stats.studentStats.genderCounts.Unspecified}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Faculty Distribution Card */}
+            <div className="space-y-4 bg-slate-50 dark:bg-slate-950/20 p-6 rounded-2xl border border-slate-100 dark:border-slate-850">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Faculty Distribution breakdown</span>
+
+              <div className="space-y-3 pt-2">
+                {Object.entries(stats.studentStats.facultyCounts).map(([fac, count], idx) => {
+                  const percent = stats.studentStats.totalStudents > 0 ? Math.round((count / stats.studentStats.totalStudents) * 100) : 0;
+                  const barColors = [
+                    "from-blue-600 to-indigo-500",
+                    "from-emerald-500 to-teal-500",
+                    "from-purple-500 to-indigo-500",
+                    "from-amber-500 to-orange-500",
+                    "from-rose-500 to-red-500"
+                  ];
+                  const color = barColors[idx % barColors.length];
+
+                  return (
+                    <div key={fac} className="space-y-1.5">
+                      <div className="flex justify-between text-xs font-bold text-slate-655 dark:text-slate-350">
+                        <span>{fac}</span>
+                        <span className="text-slate-855 dark:text-white">{count} Students ({percent}%)</span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2">
+                        <div
+                          className={`bg-gradient-to-r ${color} h-2 rounded-full transition-all duration-500`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* LEFT COLUMN: User Directory */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/85 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
@@ -579,39 +746,6 @@ function AdminOverview({ user, stats }) {
                 {sendingNotif ? 'Sending Alert...' : 'Dispatch System Notification'}
               </button>
             </form>
-          </div>
-        </div>
-      </div>
-
-      {/* BOTTOM ROW: Dynamic Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex items-center gap-5">
-          <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-650">
-            <Users className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Users</p>
-            <p className="text-3xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{stats?.totalUsers ?? '...'}</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex items-center gap-5">
-          <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/30 rounded-xl flex items-center justify-center text-blue-500">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Active Sessions</p>
-            <p className="text-3xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{stats?.activeSessions ?? '...'}</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex items-center gap-5">
-          <div className="w-12 h-12 bg-red-50 dark:bg-red-950/20 rounded-xl flex items-center justify-center text-red-500">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">System Alerts</p>
-            <p className="text-3xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{stats?.systemAlerts ?? '...'}</p>
           </div>
         </div>
       </div>
@@ -989,6 +1123,7 @@ function FinanceLedgerPanel({ user }) {
   const stats = useQuery(api.finance.getFinanceOverviewStats, { requesterId: user._id || user.userId });
   const transactions = useQuery(api.finance.getAllTransactions, { requesterId: user._id || user.userId });
 
+  const [activeSubTab, setActiveSubTab] = useState('ledger');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [payForm, setPayForm] = useState({ amount: '', method: 'cash', reference: '', notes: '' });
@@ -1134,8 +1269,36 @@ function FinanceLedgerPanel({ user }) {
         </div>
       </div>
 
-      {/* STATS CARDS ROW */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Sub-tab Navigation */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2">
+        <button
+          onClick={() => setActiveSubTab('ledger')}
+          className={`px-5 py-2.5 text-xs font-bold transition-all border-b-2 uppercase tracking-wider ${
+            activeSubTab === 'ledger'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+          }`}
+        >
+          Master Tuition Ledger
+        </button>
+        <button
+          onClick={() => setActiveSubTab('transcripts')}
+          className={`px-5 py-2.5 text-xs font-bold transition-all border-b-2 uppercase tracking-wider relative ${
+            activeSubTab === 'transcripts'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+          }`}
+        >
+          Transcript Clearance
+        </button>
+      </div>
+
+      {activeSubTab === 'transcripts' ? (
+        <FinanceTranscriptClearanceConsole user={user} ledger={ledger} />
+      ) : (
+        <>
+          {/* STATS CARDS ROW */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total Funds Tracked */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex items-center gap-5 relative overflow-hidden">
           <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/45 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
@@ -1407,6 +1570,165 @@ function FinanceLedgerPanel({ user }) {
           </div>
         </div>
       </div>
+      </>
+      )}
+    </div>
+  );
+}
+
+function FinanceTranscriptClearanceConsole({ user, ledger }) {
+  const pendingApps = useQuery(api.transcripts.listTranscriptApplications, {
+    requesterId: user._id || user.userId,
+    status: 'Pending_Finance'
+  });
+  const approve = useMutation(api.transcripts.approveTranscriptFinance);
+  const reject = useMutation(api.transcripts.rejectTranscriptFinance);
+  const [rejectingAppId, setRejectingAppId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleApprove = async (appId, studentName) => {
+    if (!confirm(`Clear transcript application and generate secure dispatch code for ${studentName}?`)) return;
+    setIsProcessing(true);
+    try {
+      const code = await approve({
+        requesterId: user._id || user.userId,
+        applicationId: appId
+      });
+      alert(`Success: Clearance approved. Generated Secure Dispatch Code: ${code}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to approve clearance");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRejectSubmit = async (e) => {
+    e.preventDefault();
+    if (!rejectReason.trim()) {
+      alert("Please state a rejection reason.");
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      await reject({
+        requesterId: user._id || user.userId,
+        applicationId: rejectingAppId,
+        reason: rejectReason
+      });
+      alert("Application marked as rejected. Student will be notified.");
+      setRejectingAppId(null);
+      setRejectReason('');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to reject application");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-200 text-slate-800 dark:text-slate-100">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 space-y-4">
+        <div>
+          <h3 className="text-base font-bold text-[#0B192C] dark:text-white">Transcript Applications Clearance Desk</h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Verify that the applicant has no outstanding tuition dues or unpaid balances before issuing clearance codes.</p>
+        </div>
+
+        <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-xl">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-450 dark:text-slate-400 font-bold uppercase border-b border-slate-100 dark:border-slate-800">
+                <th className="px-6 py-4">Student Name</th>
+                <th className="px-6 py-4">Roll Number</th>
+                <th className="px-6 py-4">Program & Standing</th>
+                <th className="px-6 py-4">Tuition Balance Dues</th>
+                <th className="px-6 py-4 text-right">Clearance Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-350 font-semibold">
+              {pendingApps === undefined ? (
+                <tr><td colSpan="5" className="p-8 text-center text-slate-400 animate-pulse">Decrypting pending applications...</td></tr>
+              ) : pendingApps.length === 0 ? (
+                <tr><td colSpan="5" className="p-8 text-center text-slate-400 italic">No pending transcript applications requiring Finance clearance.</td></tr>
+              ) : (
+                pendingApps.map(app => {
+                  const studentLedger = ledger?.find(l => l.studentId === app.studentId);
+                  const balance = studentLedger ? studentLedger.balance : 0;
+                  const isCleared = balance === 0;
+
+                  return (
+                    <tr key={app._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                      <td className="px-6 py-4 font-bold text-slate-800 dark:text-white">{app.studentName}</td>
+                      <td className="px-6 py-4 font-mono text-slate-500">{app.rollNumber}</td>
+                      <td className="px-6 py-4">{app.program} (Sem {app.semester})</td>
+                      <td className="px-6 py-4">
+                        {isCleared ? (
+                          <span className="text-emerald-500 font-bold flex items-center gap-1.5">Cleared ($0 Dues)</span>
+                        ) : (
+                          <span className="text-red-500 font-bold flex items-center gap-1.5">Arrears: SLE {balance.toLocaleString()}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleApprove(app._id, app.studentName)}
+                            disabled={isProcessing}
+                            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg transition-colors uppercase tracking-wider shadow-sm"
+                          >
+                            Clear
+                          </button>
+                          <button
+                            onClick={() => setRejectingAppId(app._id)}
+                            disabled={isProcessing}
+                            className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg transition-colors uppercase tracking-wider shadow-sm"
+                          >
+                            Deny Access
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {rejectingAppId && (
+        <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl w-full max-w-md space-y-4 shadow-xl">
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">State Rejection Reason</h4>
+              <p className="text-[11px] text-slate-450 dark:text-slate-500 font-medium">Please detail why this transcript clearance is being rejected (e.g. Unpaid fees).</p>
+            </div>
+            <form onSubmit={handleRejectSubmit} className="space-y-4">
+              <textarea
+                required
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder="e.g. Outstanding tuition dues of $450 USD must be paid..."
+                className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-250 dark:border-slate-750 rounded-xl p-4 text-xs text-slate-805 dark:text-white outline-none focus:border-red-500 h-24 resize-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRejectingAppId(null)}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-655 dark:bg-slate-850 dark:hover:bg-slate-800 dark:text-slate-355 border border-slate-200 dark:border-slate-750 font-bold text-xs py-3 rounded-xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-sm"
+                >
+                  Submit Rejection
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2285,6 +2607,214 @@ function StudentPanel({ user }) {
           )}
         </div>
       </div>
+      <StudentTranscriptDesk user={user} profile={profile} />
+    </div>
+  );
+}
+
+function StudentTranscriptDesk({ user, profile }) {
+  const applications = useQuery(api.transcripts.getStudentApplications, { studentId: profile._id });
+  const apply = useMutation(api.transcripts.applyForTranscript);
+  const [isApplying, setIsApplying] = useState(false);
+
+  const handleApply = async () => {
+    if (!confirm("Are you sure you want to apply for your official academic transcript clearance?")) return;
+    setIsApplying(true);
+    try {
+      await apply({ studentId: profile._id });
+      alert("Application submitted successfully! Your file has been routed to the Finance Desk for clearance.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to apply");
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const currentApp = applications && applications.length > 0 ? applications[applications.length - 1] : null;
+
+  const handlePrintSlip = (app) => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Transcript Clearance Form - \${profile.studentName || profile.name}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; background: #fff; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; }
+            .title { font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+            .subtitle { font-size: 14px; color: #64748b; margin-top: 5px; }
+            .section { margin-top: 30px; }
+            .section-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #64748b; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 15px; }
+            .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 15px; font-size: 13px; }
+            .label { font-weight: bold; color: #475569; text-transform: uppercase; font-size: 10px; }
+            .value { font-size: 14px; margin-top: 2px; }
+            .code-box { border: 2px dashed #4f46e5; background: #faf5ff; padding: 20px; text-align: center; border-radius: 12px; margin-top: 35px; }
+            .code { font-family: monospace; font-size: 22px; font-weight: 900; color: #4f46e5; letter-spacing: 2px; }
+            .footer { margin-top: 60px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">Limkokwing University of Creative Technology</div>
+            <div class="subtitle">Freetown Campus · Official Registry Clearance Certificate</div>
+          </div>
+          <div class="section">
+            <div class="section-title">Student Information</div>
+            <div class="grid">
+              <div>
+                <div class="label">Full Candidate Name</div>
+                <div class="value">\${profile.name}</div>
+              </div>
+              <div>
+                <div class="label">Roll Number / ID</div>
+                <div class="value">\${profile.rollNumber}</div>
+              </div>
+              <div>
+                <div class="label">Enrolled Program</div>
+                <div class="value">\${profile.program}</div>
+              </div>
+              <div>
+                <div class="label">Current Standing</div>
+                <div class="value">Semester \${profile.semester} (Year \${Math.ceil(profile.semester/2)})</div>
+              </div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-title">Finance Department Clearance Logs</div>
+            <div class="grid">
+              <div>
+                <div class="label">tuition account balance</div>
+                <div class="value" style="color: #10b981; font-weight: bold;">$0.00 USD (Cleared)</div>
+              </div>
+              <div>
+                <div class="label">cleared date & time</div>
+                <div class="value">\${new Date(app.financeApprovedAt).toLocaleString()}</div>
+              </div>
+              <div>
+                <div class="label">Authorizing Auditor</div>
+                <div class="value">\${app.financeApproverName || 'Institutional Audit'}</div>
+              </div>
+              <div>
+                <div class="label">clearance status</div>
+                <div class="value" style="color: #10b981; font-weight: bold; text-transform: uppercase;">Finance Approved</div>
+              </div>
+            </div>
+          </div>
+          <div class="code-box">
+            <div class="label" style="color: #4f46e5; margin-bottom: 5px;">Secure Registry Handover Verification Code</div>
+            <div class="code">\${app.verificationCode}</div>
+            <div style="font-size: 10px; color: #6b21a8; margin-top: 8px; font-weight: bold;">Present this slip and verification code to the registry desk to collect your physical transcript.</div>
+          </div>
+          <div class="footer">
+            Generated securely by Limkokwing Management Information System (LU-MIS) • Authentication Ref: LU-TR-\${app._id}
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+      <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-950/45 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+          <Award className="w-5.5 h-5.5" />
+        </div>
+        <div>
+          <h3 className="font-bold text-slate-900 dark:text-white text-base">Academic Transcript Clearance</h3>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Apply for official transcripts, check clearance stages, and print handover forms.</p>
+        </div>
+      </div>
+
+      {!currentApp ? (
+        <div className="p-8 bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 rounded-2xl text-center space-y-4">
+          <Award className="w-12 h-12 text-slate-300 dark:text-slate-655 mx-auto" />
+          <div>
+            <h4 className="font-bold text-slate-700 dark:text-slate-250 text-sm">No Transcript Requests Filed</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-450 max-w-md mx-auto mt-1">
+              You haven't requested your official transcript. If you are graduating or transferring, file a clearance request below.
+            </p>
+          </div>
+          <button
+            onClick={handleApply}
+            disabled={isApplying}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3 px-6 rounded-xl transition-all shadow-md uppercase tracking-wider disabled:opacity-50"
+          >
+            {isApplying ? 'Filing Request...' : 'Apply for Transcript Clearance'}
+          </button>
+        </div>
+      ) : currentApp.status === 'Pending_Finance' ? (
+        <div className="p-8 bg-slate-50 dark:bg-slate-855 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col items-center text-center space-y-4">
+          <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 animate-pulse">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-slate-700 dark:text-slate-250 text-sm">Awaiting Finance Desk Approval</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-450 max-w-md mx-auto mt-1">
+              Your transcript application has been logged. Finance auditors are reviewing your ledger accounts to confirm zero outstanding arrears.
+            </p>
+          </div>
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider font-mono">Stage 1 of 3: Finance Ledger Audit</div>
+        </div>
+      ) : currentApp.status === 'Rejected' ? (
+        <div className="p-8 bg-red-500/5 border border-red-500/10 rounded-2xl flex flex-col items-center text-center space-y-4">
+          <AlertTriangle className="w-10 h-10 text-red-500" />
+          <div>
+            <h4 className="font-bold text-red-700 dark:text-red-400 text-sm">Clearance Denied by Finance</h4>
+            <p className="text-xs text-red-655 dark:text-red-400 max-w-md mx-auto mt-1 font-semibold">
+              Reason: {currentApp.rejectionReason}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-450 mt-2">
+              Please resolve your outstanding arrears with the cashier's counter and file a fresh request.
+            </p>
+          </div>
+          <button
+            onClick={handleApply}
+            disabled={isApplying}
+            className="bg-red-600 hover:bg-red-500 text-white font-bold text-xs py-3 px-6 rounded-xl transition-all shadow-md uppercase tracking-wider disabled:opacity-50"
+          >
+            Reapply Clearance
+          </button>
+        </div>
+      ) : currentApp.status === 'Pending_Registry' ? (
+        <div className="p-6 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">Cleared & Verified</span>
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm mt-1">Transcript Slip Approved</h4>
+              <p className="text-xs text-slate-550 dark:text-slate-400 mt-0.5">Finance clearance approved. Your secure dispatch verification code has been released.</p>
+            </div>
+            <button
+              onClick={() => handlePrintSlip(currentApp)}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 px-5 rounded-xl transition-all shadow-md uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+            >
+              <Download className="w-4 h-4" /> Print Clearance Slip
+            </button>
+          </div>
+
+          <div className="p-4 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-805 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-center sm:text-left">
+              <span className="text-[8px] font-bold text-slate-400 dark:text-slate-555 uppercase tracking-widest">Verification reference</span>
+              <div className="text-lg font-black text-indigo-600 dark:text-indigo-400 font-mono tracking-wide">{currentApp.verificationCode}</div>
+            </div>
+            <div className="text-xs text-slate-450 dark:text-slate-400 font-semibold text-center sm:text-right max-w-xs">
+              Take the printed clearance form to the registrar's office. They will enter this code to verify your status and issue the transcript.
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-8 bg-slate-50 dark:bg-slate-855 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col items-center text-center space-y-4">
+          <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+          <div>
+            <h4 className="font-bold text-slate-700 dark:text-slate-250 text-sm">Transcript Dispatch Confirmed</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-450 max-w-md mx-auto mt-1">
+              Your official academic transcripts have been verified, signed, and physically dispatched to you by the Registrar.
+            </p>
+          </div>
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider font-mono">Dispatched Reference: {currentApp.verificationCode}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2989,7 +3519,7 @@ export default function Dashboard() {
   useEffect(() => {
     setMounted(true);
     try {
-      const session = sessionStorage.getItem('lusl_session');
+      const session = localStorage.getItem('lusl_session');
       if (!session) { router.push('/login'); return; }
       setUser(JSON.parse(session));
     } catch {
@@ -3026,7 +3556,7 @@ export default function Dashboard() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const logout = () => {
-    sessionStorage.removeItem('lusl_session');
+    localStorage.removeItem('lusl_session');
     router.push('/login');
   };
 
@@ -3059,6 +3589,7 @@ export default function Dashboard() {
     { icon: LayoutDashboard, label: 'Overview', view: 'overview' },
     { icon: Users, label: 'Manage Staff', view: 'manage_staff' },
     { icon: Users, label: 'Manage Students', view: 'manage_students' },
+    { icon: FileText, label: 'Campus Analytics', view: 'analytics' },
     { icon: ShieldAlert, label: 'Entrance Scanner', view: 'entrance_scanner' },
     { icon: BookOpen, label: 'Course Catalog', view: 'manage_courses' },
     { icon: ShieldCheck, label: 'Security Logs', view: 'security_logs' },
@@ -3110,6 +3641,18 @@ export default function Dashboard() {
               >
                 <LayoutDashboard className="w-4 h-4" /> Dashboard
               </button>
+              {user.role !== 'student' && (
+                <button
+                  onClick={() => { setCurrentView('analytics'); setSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold tracking-wide transition-all ${
+                    currentView === 'analytics'
+                      ? 'bg-[#D6E6F2] text-[#0B192C] shadow-sm'
+                      : 'text-slate-400 hover:bg-[#1A2A40] hover:text-white'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" /> Campus Analytics
+                </button>
+              )}
               {user.role === 'student' && (
                 <>
                   <button
@@ -3251,7 +3794,9 @@ export default function Dashboard() {
         </header>
 
         <main className="flex-1 p-6 max-w-6xl mx-auto w-full animate-in fade-in duration-300">
-          {user.role === 'admin' ? (
+          {currentView === 'analytics' && (user.role === 'admin' || user.role === 'registry' || user.role === 'finance') ? (
+            <CampusAnalyticsPanel user={user} />
+          ) : user.role === 'admin' ? (
             <AdminPanel user={user} currentView={currentView} stats={stats} />
           ) : (
             <>
@@ -3262,13 +3807,637 @@ export default function Dashboard() {
                   {user.role === 'student' && currentView === 'overview' && <StudentPanel user={user} />}
                   {user.role === 'student' && currentView === 'course_catalog' && <StudentCourseCatalog user={user} />}
                   {user.role === 'student' && currentView === 'sitting' && <StudentSittingPanel user={user} />}
-                  {user.role === 'finance' && <FinanceLedgerPanel user={user} />}
-                  {user.role === 'registry' && <RegistryPanel user={user} />}
+                  {user.role === 'finance' && currentView === 'overview' && <FinanceLedgerPanel user={user} />}
+                  {user.role === 'registry' && currentView === 'overview' && <RegistryPanel user={user} />}
                 </>
               )}
             </>
           )}
         </main>
+        {user.role === 'admin' && <JarvisVoiceAssistant stats={stats} user={user} setCurrentView={setCurrentView} />}
+      </div>
+    </div>
+  );
+}
+
+function JarvisVoiceAssistant({ stats, user, setCurrentView }) {
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [jarvisReply, setJarvisReply] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [recognition, setRecognition] = useState(null);
+  
+  const [bossName, setBossName] = useState('Sir');
+  const [jarvisName, setJarvisName] = useState('Jarvis');
+  const [voiceGender, setVoiceGender] = useState('male');
+  const [conversation, setConversation] = useState([]);
+
+  const statsRef = useRef(stats);
+  const bossNameRef = useRef(bossName);
+  const voiceGenderRef = useRef(voiceGender);
+  const isSpeakingRef = useRef(isSpeaking);
+  const isOpenRef = useRef(isOpen);
+  const jarvisNameRef = useRef(jarvisName);
+  const isListeningRef = useRef(isListening);
+  const shouldBeListeningRef = useRef(false);
+  const conversationRef = useRef(conversation);
+
+  useEffect(() => {
+    conversationRef.current = conversation;
+  }, [conversation]);
+
+  useEffect(() => {
+    statsRef.current = stats;
+  }, [stats]);
+
+  useEffect(() => {
+    bossNameRef.current = bossName;
+  }, [bossName]);
+
+  useEffect(() => {
+    voiceGenderRef.current = voiceGender;
+  }, [voiceGender]);
+
+  useEffect(() => {
+    isSpeakingRef.current = isSpeaking;
+  }, [isSpeaking]);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  useEffect(() => {
+    jarvisNameRef.current = jarvisName;
+  }, [jarvisName]);
+
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedBoss = localStorage.getItem('jarvis_boss_name');
+      if (storedBoss) setBossName(storedBoss);
+
+      const storedJarvis = localStorage.getItem('jarvis_self_name');
+      if (storedJarvis) setJarvisName(storedJarvis);
+
+      const storedGender = localStorage.getItem('jarvis_voice_gender');
+      if (storedGender) setVoiceGender(storedGender);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        rec.continuous = false;
+        rec.interimResults = true;
+        rec.lang = 'en-US';
+
+        rec.onstart = () => {
+          setIsListening(true);
+        };
+
+        rec.onresult = (event) => {
+          let interimTranscript = '';
+          let finalTranscript = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const transcriptSegment = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcriptSegment;
+            } else {
+              interimTranscript += transcriptSegment;
+            }
+          }
+
+          const text = (finalTranscript || interimTranscript).toLowerCase().trim();
+          setTranscript(text);
+
+          if (finalTranscript) {
+            const cleanFinal = finalTranscript.toLowerCase().trim();
+            if (cleanFinal.length > 1) {
+              try {
+                rec.stop();
+              } catch (e) {}
+              processCommand(cleanFinal);
+            }
+          }
+        };
+
+        rec.onerror = (e) => {
+          if (e.error !== 'no-speech') {
+            console.warn("Speech recognition warning:", e.error);
+          }
+          setIsListening(false);
+        };
+
+        rec.onend = () => {
+          setIsListening(false);
+        };
+
+        setRecognition(rec);
+
+        return () => {
+          rec.stop();
+        };
+      }
+    }
+  }, [jarvisName]);
+
+  const speak = (text) => {
+    if (typeof window === 'undefined') return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    const voices = window.speechSynthesis.getVoices();
+    let selectedVoice = null;
+    if (voiceGenderRef.current === 'female') {
+      selectedVoice = voices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('google us english') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('hazel') || v.name.toLowerCase().includes('samantha') || v.name.toLowerCase().includes('google uk english female'));
+    } else {
+      selectedVoice = voices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('google uk english male') || v.name.toLowerCase().includes('microsoft david') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('daniel'));
+    }
+    
+    if (selectedVoice) utterance.voice = selectedVoice;
+    
+    utterance.pitch = voiceGenderRef.current === 'female' ? 1.15 : 0.85;
+    utterance.rate = 1.05;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    setJarvisReply(text);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const processCommand = async (commandText) => {
+    const text = commandText.toLowerCase().trim();
+    const currentStats = statsRef.current;
+    const currentBossName = bossNameRef.current;
+
+    // Local configuration interrupts
+    if (text.includes("switch to a lady's voice") || text.includes('switch to a female voice') || text.includes('switch to a woman voice') || text.includes('lady voice') || text.includes('female voice')) {
+      setVoiceGender('female');
+      localStorage.setItem('jarvis_voice_gender', 'female');
+      setTimeout(() => {
+        speak("Understood, Sir. Switching synthesizer configuration to female voice patterns.");
+      }, 100);
+      return;
+    }
+
+    if (text.includes('switch to a male voice') || text.includes('male voice') || text.includes('switch back to male voice')) {
+      setVoiceGender('male');
+      localStorage.setItem('jarvis_voice_gender', 'male');
+      setTimeout(() => {
+        speak("Understood, Sir. Switching synthesizer configuration to male voice patterns.");
+      }, 100);
+      return;
+    }
+
+    if (text.includes('from now on call me') || text.includes('keep calling me') || text.includes('change my name to') || text.includes('call me')) {
+      const regex = /from now on call me|keep calling me|change my name to|call me/i;
+      const match = commandText.match(regex);
+      const name = commandText.slice(commandText.indexOf(match[0]) + match[0].length).trim();
+      if (name) {
+        setBossName(name);
+        localStorage.setItem('jarvis_boss_name', name);
+        speak(`Understood. I will address you as ${name} from now on.`);
+      } else {
+        speak(`I didn't catch the name, ${currentBossName}. Who should I call you?`);
+      }
+      return;
+    }
+
+    if (text.includes('from now on your name is')) {
+      const name = commandText.slice(commandText.indexOf('your name is') + 'your name is'.length).trim();
+      if (name) {
+        setJarvisName(name);
+        localStorage.setItem('jarvis_self_name', name);
+        speak(`System configurations updated. My designated moniker is now ${name}.`);
+      } else {
+        speak(`I didn't catch the name, ${currentBossName}. What is my name?`);
+      }
+      return;
+    }
+
+    if (text.includes('reload') || text.includes('refresh') || text.includes('restart page')) {
+      speak("Reloading system interface, Sir.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      return;
+    }
+
+    // Call the server-side Gemini conversational API
+    setIsThinking(true);
+    const updatedHistory = [
+      ...conversationRef.current,
+      { role: 'user', content: commandText }
+    ];
+    setConversation(updatedHistory);
+
+    try {
+      const response = await fetch('/api/jarvis/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: updatedHistory
+        })
+      });
+
+      if (!response.ok) throw new Error('API completion call failed');
+      
+      const data = await response.json();
+      const replyText = data.reply || "Excuse me, Sir, I was unable to compile a suitable response.";
+      
+      setConversation(prev => [...prev, { role: 'assistant', content: replyText }]);
+      speak(replyText);
+
+      // Handle function calling / navigational actions
+      if (data.action && data.action.type === 'NAVIGATE') {
+        setCurrentView(data.action.payload);
+      }
+    } catch (err) {
+      console.error("Jarvis API chat error:", err);
+      speak("Excuse me, Sir, but I could not establish a connection to my neural backend.");
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
+  const toggleMic = () => {
+    if (!recognition) {
+      alert("Speech recognition is not supported in this browser. Please use Chrome or Safari.");
+      return;
+    }
+    if (isListening) {
+      setIsListening(false);
+      try {
+        recognition.stop();
+      } catch (err) {}
+    } else {
+      setTranscript('');
+      setIsListening(true);
+      try {
+        recognition.start();
+      } catch (err) {
+        setIsListening(false);
+      }
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3 font-semibold">
+      {isOpen && (
+        <div className="bg-slate-900 border border-indigo-500/35 p-5 rounded-3xl w-72 shadow-2xl text-white space-y-4 animate-in slide-in-from-bottom-5 duration-300">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">J.A.R.V.I.S. Core</span>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors text-[10px] font-black uppercase tracking-wider">Close</button>
+          </div>
+
+          <div className="space-y-3">
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/40">
+              <p className="text-[9px] font-black uppercase text-indigo-400 tracking-wider">Input Heard</p>
+              <p className="text-xs font-semibold text-slate-350 mt-1 min-h-6">{transcript || (isListening ? 'Jarvis is listening... speak your command' : 'Microphone disabled. Click to enable.')}</p>
+            </div>
+
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/40">
+              <p className="text-[9px] font-black uppercase text-emerald-400 tracking-wider">Jarvis Reply</p>
+              <p className="text-xs font-semibold text-slate-200 mt-1 min-h-6">{jarvisReply || 'Waiting for command...'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={toggleMic}
+              className={`p-4 rounded-full transition-all shadow-md flex items-center justify-center ${
+                isListening 
+                  ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse' 
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:scale-105'
+              }`}
+            >
+              {isListening ? (
+                <div className="flex gap-1 items-center h-4">
+                  <span className="w-1 bg-white h-2 rounded animate-bounce" style={{ animationDelay: '0.1s' }} />
+                  <span className="w-1 bg-white h-4 rounded animate-bounce" style={{ animationDelay: '0.3s' }} />
+                  <span className="w-1 bg-white h-3 rounded animate-bounce" style={{ animationDelay: '0.5s' }} />
+                </div>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (!isOpen) {
+            setTimeout(() => {
+              speak("Jarvis terminal initialized. Systems are normal. Command me, Sir.");
+            }, 500);
+          }
+        }}
+        className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all bg-slate-900 border-2 ${
+          isSpeaking 
+            ? 'border-emerald-500 shadow-emerald-500/20 scale-105' 
+            : isListening 
+              ? 'border-red-500 shadow-red-500/20 scale-105' 
+              : 'border-indigo-500 hover:border-indigo-400 shadow-indigo-500/10 hover:scale-105'
+        }`}
+      >
+        <div className="relative w-8 h-8 flex items-center justify-center">
+          <div className={`absolute inset-0 rounded-full border border-dashed animate-spin ${
+            isSpeaking ? 'border-emerald-500/80' : isListening ? 'border-red-500/80' : 'border-indigo-500/40'
+          }`} />
+          <div className={`w-3.5 h-3.5 rounded-full ${
+            isSpeaking ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : isListening ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : 'bg-indigo-500 shadow-[0_0_8px_#6366f1]'
+          }`} />
+        </div>
+      </button>
+    </div>
+  );
+}
+
+function CampusAnalyticsPanel({ user }) {
+  const analytics = useQuery(api.users.getDetailedAnalytics, { requesterId: user._id || user.userId });
+
+  if (analytics === undefined) {
+    return (
+      <div className="p-20 text-center animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">
+        Loading Campus Intelligence & Analytics Database...
+      </div>
+    );
+  }
+
+  const { studentCount, courseCount, logsCount, examSitting, averageScores, logTraffic, tuitionRatio } = analytics;
+
+  const totalExamsLogged = examSitting.sat + examSitting.deferred;
+  const satPercent = totalExamsLogged > 0 ? Math.round((examSitting.sat / totalExamsLogged) * 100) : 0;
+  const deferredPercent = totalExamsLogged > 0 ? Math.round((examSitting.deferred / totalExamsLogged) * 100) : 0;
+
+  const totalFinances = tuitionRatio.cleared + tuitionRatio.arrears;
+  const clearedPercent = totalFinances > 0 ? Math.round((tuitionRatio.cleared / totalFinances) * 100) : 0;
+  const arrearsPercent = totalFinances > 0 ? Math.round((tuitionRatio.arrears / totalFinances) * 100) : 0;
+
+  const maxTrafficVal = Math.max(...logTraffic.map(t => Math.max(t.logins, t.alerts, t.gradeChanges)), 5);
+
+  return (
+    <div className="space-y-6 text-slate-800 dark:text-slate-100 animate-in fade-in duration-300">
+      <div>
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">Campus Analytics & Insights</h1>
+        <p className="text-slate-400 dark:text-slate-500 text-xs font-semibold mt-0.5 font-medium">Observe university operations, exam registries, ledger clears, and system audit logs.</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+          <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Enrolled Students</p>
+          <p className="text-2xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{studentCount}</p>
+        </div>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+          <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Course Catalog</p>
+          <p className="text-2xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{courseCount}</p>
+        </div>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+          <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Exams Audited</p>
+          <p className="text-2xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{totalExamsLogged}</p>
+        </div>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+          <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Security Entries</p>
+          <p className="text-2xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{logsCount}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Exam Registry Sitting status</h3>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Sat vs. Deferred exams due to tuition arrears</p>
+          </div>
+          
+          <div className="flex items-center justify-around gap-6 py-6 flex-wrap">
+            <div className="relative w-36 h-36 flex items-center justify-center">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="var(--circle-bg, #334155)" strokeWidth="3" className="opacity-15 dark:opacity-40" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.915"
+                  fill="none"
+                  stroke="#4f46e5"
+                  strokeWidth="3.2"
+                  strokeDasharray={`${satPercent} ${100 - satPercent}`}
+                  strokeDashoffset="0"
+                />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.915"
+                  fill="none"
+                  stroke="#f59e0b"
+                  strokeWidth="3.2"
+                  strokeDasharray={`${deferredPercent} ${100 - deferredPercent}`}
+                  strokeDashoffset={`-${satPercent}`}
+                />
+              </svg>
+              <div className="absolute flex flex-col items-center justify-center">
+                <span className="text-xl font-black text-slate-800 dark:text-white">{totalExamsLogged}</span>
+                <span className="text-[8px] font-bold text-slate-450 uppercase tracking-widest">Grades Filed</span>
+              </div>
+            </div>
+
+            <div className="space-y-3 font-semibold text-xs text-slate-655 dark:text-slate-350 min-w-[120px]">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-indigo-600 shrink-0" />
+                <div className="flex-grow">
+                  <div className="flex justify-between">
+                    <span>Cleared/Sat</span>
+                    <span className="font-bold text-slate-805 dark:text-white">{examSitting.sat}</span>
+                  </div>
+                  <div className="text-[9px] text-slate-400">{satPercent}% Cleared to sit</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />
+                <div className="flex-grow">
+                  <div className="flex justify-between">
+                    <span>Deferred</span>
+                    <span className="font-bold text-slate-805 dark:text-white">{examSitting.deferred}</span>
+                  </div>
+                  <div className="text-[9px] text-slate-400">{deferredPercent}% Deferred standings</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Tuition Clearance status</h3>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Cleared student profiles vs. outstanding arrears ledger accounts</p>
+          </div>
+
+          <div className="flex items-center justify-around gap-6 py-6 flex-wrap">
+            <div className="relative w-36 h-36 flex items-center justify-center">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="var(--circle-bg, #334155)" strokeWidth="3" className="opacity-15 dark:opacity-40" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.915"
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="3.2"
+                  strokeDasharray={`${clearedPercent} ${100 - clearedPercent}`}
+                  strokeDashoffset="0"
+                />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.915"
+                  fill="none"
+                  stroke="#f43f5e"
+                  strokeWidth="3.2"
+                  strokeDasharray={`${arrearsPercent} ${100 - arrearsPercent}`}
+                  strokeDashoffset={`-${clearedPercent}`}
+                />
+              </svg>
+              <div className="absolute flex flex-col items-center justify-center">
+                <span className="text-xl font-black text-slate-800 dark:text-white">{totalFinances}</span>
+                <span className="text-[8px] font-bold text-slate-455 uppercase tracking-widest">Profiles</span>
+              </div>
+            </div>
+
+            <div className="space-y-3 font-semibold text-xs text-slate-655 dark:text-slate-350 min-w-[120px]">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0" />
+                <div className="flex-grow">
+                  <div className="flex justify-between">
+                    <span>Cleared</span>
+                    <span className="font-bold text-slate-805 dark:text-white">{tuitionRatio.cleared}</span>
+                  </div>
+                  <div className="text-[9px] text-slate-400">{clearedPercent}% Zero dues</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-rose-500 shrink-0" />
+                <div className="flex-grow">
+                  <div className="flex justify-between">
+                    <span>Arrears</span>
+                    <span className="font-bold text-slate-805 dark:text-white">{tuitionRatio.arrears}</span>
+                  </div>
+                  <div className="text-[9px] text-slate-400">{arrearsPercent}% Default arrears</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">7-Day Security Traffic & Integrity Analysis</h3>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Tracking user login audits, system alerts, and academic grade corrections</p>
+          </div>
+
+          <div className="relative h-48 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-950/20 flex flex-col justify-between">
+            <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none text-[8px] font-bold text-slate-350 dark:text-slate-500">
+              <div className="border-b border-slate-200/40 dark:border-slate-800/40 w-full pb-1">Max: {maxTrafficVal}</div>
+              <div className="border-b border-slate-200/20 dark:border-slate-800/20 w-full"></div>
+              <div className="border-b border-slate-200/20 dark:border-slate-800/20 w-full"></div>
+              <div className="w-full">0</div>
+            </div>
+
+            <svg className="w-full h-36 overflow-visible z-10" viewBox="0 0 100 36" preserveAspectRatio="none">
+              <polyline
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth="0.85"
+                points={logTraffic.map((t, idx) => {
+                  const x = (idx / 6) * 100;
+                  const y = 36 - (t.logins / maxTrafficVal) * 36;
+                  return `${x},${y}`;
+                }).join(' ')}
+              />
+              <polyline
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="0.85"
+                strokeDasharray="1.5 1"
+                points={logTraffic.map((t, idx) => {
+                  const x = (idx / 6) * 100;
+                  const y = 36 - (t.alerts / maxTrafficVal) * 36;
+                  return `${x},${y}`;
+                }).join(' ')}
+              />
+              <polyline
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth="0.85"
+                points={logTraffic.map((t, idx) => {
+                  const x = (idx / 6) * 100;
+                  const y = 36 - (t.gradeChanges / maxTrafficVal) * 36;
+                  return `${x},${y}`;
+                }).join(' ')}
+              />
+            </svg>
+
+            <div className="flex justify-between text-[8px] font-black text-slate-450 dark:text-slate-550 uppercase tracking-wider font-mono">
+              {logTraffic.map(t => <span key={t.label}>{t.label}</span>)}
+            </div>
+          </div>
+
+          <div className="flex gap-4 text-[9px] font-bold uppercase tracking-wider pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-1.5 bg-blue-500 rounded" /> Logins</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-1.5 bg-red-500 rounded" /> Failures / Alerts</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-1.5 bg-amber-500 rounded" /> Grade Edits</div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Continuous Assessment Performance</h3>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Average student score distribution across key academic areas</p>
+          </div>
+
+          <div className="h-48 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 bg-slate-50/50 dark:bg-slate-950/20 flex justify-around items-end relative">
+            <div className="flex flex-col items-center gap-2 w-12 z-10">
+              <span className="text-[9px] font-bold text-slate-550 dark:text-white font-mono">{averageScores.attendance} / 10</span>
+              <div className="w-6 bg-gradient-to-t from-indigo-650 to-blue-500 rounded-t-lg transition-all duration-500" style={{ height: `${(averageScores.attendance / 10) * 100}px` }} />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-405">Attnd (10)</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-2 w-12 z-10">
+              <span className="text-[9px] font-bold text-slate-550 dark:text-white font-mono">{averageScores.presentation} / 20</span>
+              <div className="w-6 bg-gradient-to-t from-emerald-600 to-teal-500 rounded-t-lg transition-all duration-500" style={{ height: `${(averageScores.presentation / 20) * 100}px` }} />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-405">Pres (20)</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-2 w-12 z-10">
+              <span className="text-[9px] font-bold text-slate-550 dark:text-white font-mono">{averageScores.test} / 30</span>
+              <div className="w-6 bg-gradient-to-t from-amber-600 to-orange-500 rounded-t-lg transition-all duration-500" style={{ height: `${(averageScores.test / 30) * 100}px` }} />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-405">Test (30)</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-2 w-12 z-10">
+              <span className="text-[9px] font-bold text-slate-550 dark:text-white font-mono">{averageScores.exam} / 40</span>
+              <div className="w-6 bg-gradient-to-t from-rose-600 to-pink-500 rounded-t-lg transition-all duration-500" style={{ height: `${(averageScores.exam / 40) * 100}px` }} />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-405">Exam (40)</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -66,7 +66,7 @@ export default function LoginPage() {
         }
         
         if (parsedUser && parsedUser.email) {
-          sessionStorage.setItem('lusl_session', JSON.stringify(parsedUser));
+          localStorage.setItem('lusl_session', JSON.stringify(parsedUser));
           window.location.href = '/dashboard';
         } else {
           const emailParam = params.get('email');
@@ -80,7 +80,8 @@ export default function LoginPage() {
               email: emailParam,
               role: roleParam,
             };
-            sessionStorage.setItem('lusl_session', JSON.stringify(userData));
+            // Keep session persistent using localStorage instead of sessionStorage
+            localStorage.setItem('lusl_session', JSON.stringify(userData));
             window.location.href = '/dashboard';
           } else {
             setError('Google authentication succeeded, but user data is missing in callback.');
@@ -139,7 +140,14 @@ export default function LoginPage() {
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+    if (value && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+    
+    const entered = newOtp.join('');
+    if (entered.length === 6) {
+      verifyOtp(entered);
+    }
   };
 
   const handleOtpKeyDown = (index, e) => {
@@ -164,6 +172,11 @@ export default function LoginPage() {
       otpRefs.current[focusedIndex + 1]?.focus();
     } else {
       otpRefs.current[5]?.focus();
+    }
+
+    const entered = newOtp.join('');
+    if (entered.length === 6) {
+      verifyOtp(entered);
     }
   };
 
@@ -249,11 +262,11 @@ export default function LoginPage() {
     return { browser, device };
   };
 
-  const verifyOtp = async () => {
+  const verifyOtp = async (forcedCode) => {
     if (lockTimer > 0) return;
-    const entered = otp.join('');
+    const entered = typeof forcedCode === 'string' ? forcedCode : otp.join('');
     if (entered.length < 6) { setError('Please enter all 6 digits.'); return; }
-
+ 
     setIsLoading(true);
     try {
       const sessionId = sessionStorage.getItem('temp_session_id');
@@ -264,7 +277,7 @@ export default function LoginPage() {
       }
       
       // ✅ SUCCESS
-      sessionStorage.setItem('lusl_session', JSON.stringify(result.user));
+      localStorage.setItem('lusl_session', JSON.stringify(result.user));
       window.location.href = '/dashboard';
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Verification failed';

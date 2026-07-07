@@ -12,9 +12,12 @@ import type * as admin_tools from "../admin_tools.js";
 import type * as admissions from "../admissions.js";
 import type * as emails from "../emails.js";
 import type * as finance from "../finance.js";
+import type * as lecturers from "../lecturers.js";
 import type * as notifications from "../notifications.js";
 import type * as security from "../security.js";
+import type * as settings from "../settings.js";
 import type * as students from "../students.js";
+import type * as transcripts from "../transcripts.js";
 import type * as users from "../users.js";
 
 import type {
@@ -28,9 +31,12 @@ declare const fullApi: ApiFromModules<{
   admissions: typeof admissions;
   emails: typeof emails;
   finance: typeof finance;
+  lecturers: typeof lecturers;
   notifications: typeof notifications;
   security: typeof security;
+  settings: typeof settings;
   students: typeof students;
+  transcripts: typeof transcripts;
   users: typeof users;
 }>;
 
