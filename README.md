@@ -36,3 +36,5 @@
 *   **Masking UI**: `src/components/ui/MaskedData.js`
 *   **Admin Panel**: `src/components/Dashboard/AdminPanel.js`
 *   **Finance Panel**: `src/components/Dashboard/FinancePanel.js`
+
+<!-- Deployment trigger: 2026-07-10T10:02:00Z -->
