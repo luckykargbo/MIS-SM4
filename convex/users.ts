@@ -245,6 +245,7 @@ export const createUser = mutation({
     tuitionFee: v.optional(v.number()),
     department: v.optional(v.string()),
     assignedCourses: v.optional(v.array(v.string())),
+    gender: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const reqId = ctx.db.normalizeId("users", args.requesterId);
@@ -352,6 +353,7 @@ export const createUser = mutation({
         academicYear: args.academicYear || "2025/2026",
         registryStatus: "active",
         enrolledCourses: [],
+        gender: args.gender || "Unspecified",
         createdAt: Date.now(),
       });
 

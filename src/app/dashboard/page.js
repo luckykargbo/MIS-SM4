@@ -43,7 +43,7 @@ function AdminOverview({ user, stats }) {
   const toggleUserActive = useMutation(api.users.toggleUserActive);
   const sendNotification = useMutation(api.notifications.sendNotification);
 
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'student', program: 'Bachelor of Information Technology' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'student', program: 'Bachelor of Information Technology', gender: 'Male' });
   const [profileImage, setProfileImage] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -145,10 +145,11 @@ function AdminOverview({ user, stats }) {
         passwordHash: hashed,
         plainPassword: form.password || undefined,
         program: form.role === 'student' ? form.program : undefined,
+        gender: form.role === 'student' ? form.gender : undefined,
         profileImage: profileImage || undefined
       });
       alert(`Account provisioned successfully for ${form.name}!`);
-      setForm({ name: '', email: '', password: '', role: 'student', program: 'Bachelor of Science in IT' });
+      setForm({ name: '', email: '', password: '', role: 'student', program: 'Bachelor of Science in IT', gender: 'Male' });
       setProfileImage('');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to create user');
@@ -236,51 +237,57 @@ function AdminOverview({ user, stats }) {
     <div className="space-y-8 text-slate-800 dark:text-slate-100">
       {/* TOP ROW: Dynamic Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex items-center gap-5">
-          <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-650">
+        {/* Total Users */}
+        <div className="backdrop-blur-md bg-white/70 dark:bg-[#0c051b]/80 border border-slate-200/40 dark:border-cyan-500/35 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-cyan-500/20 hover:-translate-y-1 transition-all duration-300 p-6 flex items-center gap-5 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-cyan-500 shadow-[0_0_10px_#00f0ff]" />
+          <div className="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center text-cyan-500 dark:text-cyan-400 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_8px_rgba(6,182,212,0.2)]">
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Users</p>
-            <p className="text-3xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{stats?.totalUsers ?? '...'}</p>
+            <p className="text-[10px] font-black text-slate-400 dark:text-cyan-500/60 uppercase tracking-widest font-mono">Total Users</p>
+            <p className="text-3xl font-black text-slate-900 dark:text-cyan-400 tracking-wider font-mono mt-1 drop-shadow-[0_0_8px_rgba(6,182,212,0.35)]">{stats?.totalUsers ?? '...'}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex items-center gap-5">
-          <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/30 rounded-xl flex items-center justify-center text-blue-500">
+        {/* Active Sessions */}
+        <div className="backdrop-blur-md bg-white/70 dark:bg-[#0c051b]/80 border border-slate-200/40 dark:border-fuchsia-500/35 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-fuchsia-500/20 hover:-translate-y-1 transition-all duration-300 p-6 flex items-center gap-5 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-fuchsia-500 shadow-[0_0_10px_#ff00df]" />
+          <div className="w-12 h-12 bg-fuchsia-500/10 rounded-xl flex items-center justify-center text-fuchsia-500 dark:text-fuchsia-400 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_8px_rgba(217,70,239,0.2)]">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Active Sessions</p>
-            <p className="text-3xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{stats?.activeSessions ?? '...'}</p>
+            <p className="text-[10px] font-black text-slate-400 dark:text-fuchsia-500/60 uppercase tracking-widest font-mono">Active Sessions</p>
+            <p className="text-3xl font-black text-slate-900 dark:text-fuchsia-400 tracking-wider font-mono mt-1 drop-shadow-[0_0_8px_rgba(217,70,239,0.35)]">{stats?.activeSessions ?? '...'}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex items-center gap-5">
-          <div className="w-12 h-12 bg-red-50 dark:bg-red-950/20 rounded-xl flex items-center justify-center text-red-500">
+        {/* System Alerts */}
+        <div className="backdrop-blur-md bg-white/70 dark:bg-[#0c051b]/80 border border-slate-200/40 dark:border-yellow-500/35 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-yellow-500/20 hover:-translate-y-1 transition-all duration-300 p-6 flex items-center gap-5 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-yellow-500 shadow-[0_0_10px_#eab308]" />
+          <div className="w-12 h-12 bg-yellow-500/10 rounded-xl flex items-center justify-center text-yellow-600 dark:text-yellow-400 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_8px_rgba(234,179,8,0.2)]">
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">System Alerts</p>
-            <p className="text-3xl font-black text-[#0B192C] dark:text-white tracking-tight mt-1">{stats?.systemAlerts ?? '...'}</p>
+            <p className="text-[10px] font-black text-slate-400 dark:text-yellow-500/60 uppercase tracking-widest font-mono">System Alerts</p>
+            <p className="text-3xl font-black text-slate-900 dark:text-yellow-400 tracking-wider font-mono mt-1 drop-shadow-[0_0_8px_rgba(234,179,8,0.35)]">{stats?.systemAlerts ?? '...'}</p>
           </div>
         </div>
       </div>
 
       {/* Student Enrollment Statistics & Faculty Demographics */}
       {stats?.studentStats && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Student Enrollment Demographics</h3>
-            <p className="text-xs text-slate-450 dark:text-slate-500 font-medium mt-0.5">Real-time statistics by gender ratio and faculty distribution</p>
+        <div className="backdrop-blur-md bg-white/70 dark:bg-[#0c051b]/80 border border-slate-200/40 dark:border-cyan-500/30 rounded-3xl p-6 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 dark:border-cyan-500/10 pb-4">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-cyan-400 font-mono tracking-wider">Student Enrollment Demographics</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mt-0.5">Real-time statistics by gender ratio and faculty distribution</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Gender Ratio Card (Circle Demographics) */}
-            <div className="space-y-4 bg-slate-50 dark:bg-slate-950/20 p-6 rounded-2xl border border-slate-100 dark:border-slate-850 flex flex-col justify-between">
+            <div className="space-y-4 bg-slate-50/40 dark:bg-slate-950/40 p-6 rounded-2xl border border-slate-200/30 dark:border-cyan-500/10 flex flex-col justify-between shadow-inner">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Gender Demographics</span>
-                <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-xs font-black text-slate-400 dark:text-cyan-500/60 uppercase tracking-wider font-mono">Gender Demographics</span>
+                <span className="text-[10px] font-black text-cyan-500 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-1 rounded-full uppercase tracking-wider font-mono border border-cyan-500/20">
                   Total: {stats.studentStats.totalStudents} Students
                 </span>
               </div>
@@ -288,74 +295,76 @@ function AdminOverview({ user, stats }) {
               {/* Circle Graph Visualization */}
               <div className="flex items-center justify-around gap-6 py-4 flex-wrap">
                 {/* Donut Chart using HTML SVG */}
-                <div className="relative w-36 h-36 flex items-center justify-center">
+                <div className="relative w-36 h-36 flex items-center justify-center filter drop-shadow-[0_0_10px_rgba(0,240,255,0.2)]">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                     {/* Background Circle */}
-                    <circle cx="18" cy="18" r="15.915" fill="none" stroke="var(--circle-bg, #334155)" strokeWidth="3" className="opacity-15 dark:opacity-40" />
-                    {/* Male Segment (Blue) */}
+                    <circle cx="18" cy="18" r="15.915" fill="none" stroke="#ff007f" strokeWidth="3" className="opacity-5 dark:opacity-10" />
+                    {/* Male Segment (Neon Cyan) */}
                     <circle
                       cx="18"
                       cy="18"
                       r="15.915"
                       fill="none"
-                      stroke="#3b82f6"
-                      strokeWidth="3.2"
+                      stroke="#00f0ff"
+                      strokeWidth="3.5"
                       strokeDasharray={`${stats.studentStats.totalStudents > 0 ? Math.round((stats.studentStats.genderCounts.Male / stats.studentStats.totalStudents) * 100) : 0} ${stats.studentStats.totalStudents > 0 ? 100 - Math.round((stats.studentStats.genderCounts.Male / stats.studentStats.totalStudents) * 100) : 100}`}
                       strokeDashoffset="0"
+                      strokeLinecap="round"
                     />
-                    {/* Female Segment (Pink) */}
+                    {/* Female Segment (Neon Pink/Magenta) */}
                     <circle
                       cx="18"
                       cy="18"
                       r="15.915"
                       fill="none"
-                      stroke="#ec4899"
-                      strokeWidth="3.2"
+                      stroke="#ff007f"
+                      strokeWidth="3.5"
                       strokeDasharray={`${stats.studentStats.totalStudents > 0 ? Math.round((stats.studentStats.genderCounts.Female / stats.studentStats.totalStudents) * 100) : 0} ${stats.studentStats.totalStudents > 0 ? 100 - Math.round((stats.studentStats.genderCounts.Female / stats.studentStats.totalStudents) * 100) : 100}`}
                       strokeDashoffset={`-${stats.studentStats.totalStudents > 0 ? Math.round((stats.studentStats.genderCounts.Male / stats.studentStats.totalStudents) * 100) : 0}`}
+                      strokeLinecap="round"
                     />
                   </svg>
                   <div className="absolute flex flex-col items-center justify-center">
-                    <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.studentStats.totalStudents}</span>
-                    <span className="text-[8px] font-bold text-slate-450 uppercase tracking-widest">Enrolled</span>
+                    <span className="text-2xl font-black text-slate-800 dark:text-cyan-400 font-mono leading-none drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]">{stats.studentStats.totalStudents}</span>
+                    <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Enrolled</span>
                   </div>
                 </div>
 
                 {/* Legend */}
-                <div className="space-y-3 font-semibold text-xs text-slate-655 dark:text-slate-300 min-w-[120px]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-blue-500 shrink-0" />
+                <div className="space-y-3 font-bold text-xs text-slate-600 dark:text-slate-350 min-w-[130px] font-mono">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-3 h-3 rounded-full bg-cyan-400 shrink-0 shadow-[0_0_8px_#00f0ff]" />
                     <div className="flex-grow">
                       <div className="flex justify-between">
                         <span>Male (Boys)</span>
-                        <span className="font-bold text-slate-805 dark:text-white">{stats.studentStats.genderCounts.Male}</span>
+                        <span className="font-bold text-slate-800 dark:text-cyan-400">{stats.studentStats.genderCounts.Male}</span>
                       </div>
-                      <div className="text-[9px] text-slate-400">
+                      <div className="text-[9px] text-slate-400 dark:text-cyan-400/60 font-bold mt-0.5">
                         {stats.studentStats.totalStudents > 0 ? Math.round((stats.studentStats.genderCounts.Male / stats.studentStats.totalStudents) * 100) : 0}% Ratio
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-pink-500 shrink-0" />
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-3 h-3 rounded-full bg-[#ff007f] shrink-0 shadow-[0_0_8px_#ff007f]" />
                     <div className="flex-grow">
                       <div className="flex justify-between">
                         <span>Female (Girls)</span>
-                        <span className="font-bold text-slate-805 dark:text-white">{stats.studentStats.genderCounts.Female}</span>
+                        <span className="font-bold text-slate-800 dark:text-pink-400">{stats.studentStats.genderCounts.Female}</span>
                       </div>
-                      <div className="text-[9px] text-slate-400">
+                      <div className="text-[9px] text-slate-400 dark:text-pink-400/60 font-bold mt-0.5">
                         {stats.studentStats.totalStudents > 0 ? Math.round((stats.studentStats.genderCounts.Female / stats.studentStats.totalStudents) * 100) : 0}% Ratio
                       </div>
                     </div>
                   </div>
 
                   {stats.studentStats.genderCounts.Unspecified > 0 && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <span className="w-3 h-3 rounded-full bg-slate-400 shrink-0" />
                       <div className="flex-grow">
                         <div className="flex justify-between">
                           <span>Unspecified</span>
-                          <span className="font-bold text-slate-805 dark:text-white">{stats.studentStats.genderCounts.Unspecified}</span>
+                          <span className="font-bold text-slate-800 dark:text-white">{stats.studentStats.genderCounts.Unspecified}</span>
                         </div>
                       </div>
                     </div>
@@ -365,30 +374,30 @@ function AdminOverview({ user, stats }) {
             </div>
 
             {/* Faculty Distribution Card */}
-            <div className="space-y-4 bg-slate-50 dark:bg-slate-950/20 p-6 rounded-2xl border border-slate-100 dark:border-slate-850">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Faculty Distribution breakdown</span>
+            <div className="space-y-4 bg-slate-50/40 dark:bg-slate-950/40 p-6 rounded-2xl border border-slate-200/30 dark:border-cyan-500/10 flex flex-col shadow-inner">
+              <span className="text-xs font-black text-slate-400 dark:text-cyan-500/60 uppercase tracking-wider block font-mono">Faculty Distribution breakdown</span>
 
-              <div className="space-y-3 pt-2">
+              <div className="space-y-3.5 pt-2">
                 {Object.entries(stats.studentStats.facultyCounts).map(([fac, count], idx) => {
                   const percent = stats.studentStats.totalStudents > 0 ? Math.round((count / stats.studentStats.totalStudents) * 100) : 0;
                   const barColors = [
-                    "from-blue-600 to-indigo-500",
-                    "from-emerald-500 to-teal-500",
-                    "from-purple-500 to-indigo-500",
-                    "from-amber-500 to-orange-500",
-                    "from-rose-500 to-red-500"
+                    "from-cyan-500 to-blue-500 shadow-[0_0_8px_rgba(6,182,212,0.3)]",
+                    "from-[#ff007f] to-fuchsia-500 shadow-[0_0_8px_rgba(255,0,127,0.3)]",
+                    "from-yellow-400 to-orange-500 shadow-[0_0_8px_rgba(234,179,8,0.3)]",
+                    "from-emerald-500 to-teal-500 shadow-[0_0_8px_rgba(10,185,129,0.3)]",
+                    "from-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(139,92,246,0.3)]"
                   ];
                   const color = barColors[idx % barColors.length];
 
                   return (
-                    <div key={fac} className="space-y-1.5">
-                      <div className="flex justify-between text-xs font-bold text-slate-655 dark:text-slate-350">
+                    <div key={fac} className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-350 font-mono">
                         <span>{fac}</span>
-                        <span className="text-slate-855 dark:text-white">{count} Students ({percent}%)</span>
+                        <span className="text-slate-800 dark:text-cyan-400 font-extrabold">{count} Students ({percent}%)</span>
                       </div>
-                      <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2">
+                      <div className="w-full bg-slate-100 dark:bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-200/20 dark:border-cyan-500/10">
                         <div
-                          className={`bg-gradient-to-r ${color} h-2 rounded-full transition-all duration-500`}
+                          className={`bg-gradient-to-r ${color} h-2.5 rounded-full transition-all duration-505`}
                           style={{ width: `${percent}%` }}
                         />
                       </div>
@@ -401,33 +410,33 @@ function AdminOverview({ user, stats }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start animate-in fade-in duration-300">
         {/* LEFT COLUMN: User Directory */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/85 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="lg:col-span-2 backdrop-blur-md bg-white/70 dark:bg-[#0c051b]/80 border border-slate-200/40 dark:border-cyan-500/30 rounded-3xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-slate-100 dark:border-cyan-500/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">User Directory</h2>
-              <p className="text-xs text-slate-450 dark:text-slate-500 font-medium mt-0.5">Existing staff and administrative users</p>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-cyan-400 font-mono tracking-wider">User Directory</h2>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mt-0.5">Existing staff and administrative users</p>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-center">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-cyan-500/50" />
                 <input 
                   value={searchTerm}
                   onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                   placeholder="Search directory..."
-                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-750 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none w-44 focus:border-slate-350 focus:bg-white dark:focus:bg-slate-850 transition-all"
+                  className="bg-white/50 dark:bg-slate-950/60 border border-slate-200/50 dark:border-cyan-500/25 rounded-xl pl-8.5 pr-3 py-2 text-xs text-slate-700 dark:text-cyan-400 outline-none w-44 focus:border-cyan-400 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 transition-all font-mono placeholder-cyan-500/30"
                 />
               </div>
               <select 
                 value={roleFilter} 
                 onChange={e => { setRoleFilter(e.target.value); setCurrentPage(1); }}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-350 outline-none focus:border-slate-350"
+                className="bg-white/50 dark:bg-slate-950/60 border border-slate-200/50 dark:border-cyan-500/25 rounded-xl px-3 py-2 text-xs text-slate-650 dark:text-cyan-400 outline-none focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 font-mono"
               >
-                <option value="">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="finance">Finance</option>
-                <option value="registry">Registry</option>
+                <option value="" className="dark:bg-slate-900 text-slate-800 dark:text-cyan-400">All Roles</option>
+                <option value="admin" className="dark:bg-slate-900 text-slate-800 dark:text-cyan-400">Admin</option>
+                <option value="finance" className="dark:bg-slate-900 text-slate-800 dark:text-cyan-400">Finance</option>
+                <option value="registry" className="dark:bg-slate-900 text-slate-800 dark:text-cyan-400">Registry</option>
               </select>
             </div>
           </div>
@@ -435,76 +444,78 @@ function AdminOverview({ user, stats }) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#0B192C] text-white text-[11px] font-semibold uppercase tracking-wider">
-                  <th className="px-6 py-4">Identity</th>
-                  <th className="px-6 py-4">Institutional Email</th>
-                  <th className="px-6 py-4">Department</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-center">Actions</th>
+                <tr className="bg-slate-900/90 dark:bg-slate-950/90 text-white/90 text-[10px] font-black uppercase tracking-widest font-mono border-b border-cyan-500/20">
+                  <th className="px-6 py-4 text-cyan-400">Identity</th>
+                  <th className="px-6 py-4 text-cyan-400">Institutional Email</th>
+                  <th className="px-6 py-4 text-cyan-400">Department</th>
+                  <th className="px-6 py-4 text-cyan-400">Status</th>
+                  <th className="px-6 py-4 text-center text-cyan-400">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-100 dark:divide-cyan-500/10">
                 {users === undefined ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center text-slate-400 dark:text-slate-500 text-xs font-medium animate-pulse">Syncing user directory...</td>
+                    <td colSpan="5" className="px-6 py-12 text-center text-slate-400 dark:text-cyan-500/60 text-xs font-semibold animate-pulse font-mono">Syncing user directory...</td>
                   </tr>
                 ) : paginatedUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center text-slate-400 dark:text-slate-500 text-xs italic">No administrative staff members found.</td>
+                    <td colSpan="5" className="px-6 py-12 text-center text-slate-400 dark:text-cyan-550/40 text-xs italic font-mono">No administrative staff members found.</td>
                   </tr>
                 ) : paginatedUsers.map((u) => {
                   const status = getStatus(u);
+                  const isOnline = status.label.includes('Active');
+                  const statusColor = isOnline ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]' : 'bg-slate-400';
                   return (
-                    <tr key={u._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/20 transition-colors">
-                      <td className="px-6 py-4.5 flex items-center gap-3">
+                    <tr key={u._id} className="hover:bg-cyan-500/5 transition-colors border-b border-cyan-500/5">
+                      <td className="px-6 py-4 flex items-center gap-3">
                         {u.profileImage ? (
-                          <img src={u.profileImage} alt={u.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" />
+                          <img src={u.profileImage} alt={u.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-cyan-500/30" />
                         ) : (
-                          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center font-bold text-blue-700 dark:text-blue-300 text-xs">
+                          <div className="w-8 h-8 bg-indigo-50 dark:bg-cyan-500/10 rounded-full flex items-center justify-center font-black text-indigo-600 dark:text-cyan-400 text-xs shadow-sm border border-cyan-500/20">
                             {u.name?.charAt(0)}
                           </div>
                         )}
                         <div>
-                          <div className="font-bold text-slate-800 dark:text-slate-200 text-sm">{u.name}</div>
+                          <div className="font-extrabold text-slate-800 dark:text-slate-200 text-sm leading-tight">{u.name}</div>
                           {u.staffId && (
-                            <div className="text-[10px] text-slate-450 dark:text-slate-500 font-mono font-medium tracking-tight mt-0.5">{u.staffId}</div>
+                            <div className="text-[10px] text-slate-400 dark:text-cyan-500/50 font-mono font-bold tracking-tight mt-0.5">{u.staffId}</div>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4.5">
+                      <td className="px-6 py-4">
                         <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{u.email}</span>
                       </td>
-                      <td className="px-6 py-4.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/60">
+                      <td className="px-6 py-4">
+                        <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-lg bg-fuchsia-50 dark:bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border border-fuchsia-100 dark:border-fuchsia-550/20 font-mono">
                           {u.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4.5">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
-                          <span className={`w-2 h-2 rounded-full ${status.color}`} />
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 text-xs text-slate-650 dark:text-slate-405 font-bold font-mono">
+                          <span className={`w-2 h-2 rounded-full ${statusColor}`} />
                           {status.label}
                         </div>
                       </td>
-                      <td className="px-6 py-4.5 text-center flex items-center justify-center gap-1.5">
+                      <td className="px-6 py-4 text-center flex items-center justify-center gap-2">
                         <button 
                           onClick={() => handleToggleActive(u._id, u.isActive, u.name)}
                           disabled={u.email === user.email}
-                          className={`p-1.5 rounded-lg transition-all disabled:opacity-30 ${
+                          className={`p-2 rounded-xl transition-all disabled:opacity-30 border border-transparent ${
                             u.isActive 
-                              ? 'text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30' 
-                              : 'text-red-500 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
+                              ? 'text-slate-450 hover:text-yellow-400 hover:bg-yellow-400/10 dark:hover:bg-yellow-400/10 hover:border-yellow-400/20' 
+                              : 'text-red-500 hover:text-emerald-400 hover:bg-emerald-400/10 dark:hover:bg-emerald-400/10 hover:border-emerald-400/20'
                           }`}
                           title={u.isActive ? "Block User" : "Unblock User"}
                         >
-                          {u.isActive ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                          {u.isActive ? <Lock className="w-4.5 h-4.5" /> : <Unlock className="w-4.5 h-4.5" />}
                         </button>
                         <button 
                           onClick={() => handleDelete(u._id, u.name)}
                           disabled={u.email === user.email}
-                          className="p-1.5 text-slate-450 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all disabled:opacity-30"
+                          className="p-2 text-slate-450 hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/10 hover:border-red-450/20 border border-transparent rounded-xl transition-all disabled:opacity-30"
                           title="Revoke Credentials"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4.5 h-4.5" />
                         </button>
                       </td>
                     </tr>
@@ -678,6 +689,25 @@ function AdminOverview({ user, stats }) {
                           </button>
                         );
                       })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block">Student Gender</label>
+                    <div className="flex gap-6">
+                      {["Male", "Female"].map(genderVal => (
+                        <label key={genderVal} className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-200 font-semibold cursor-pointer">
+                          <input
+                            type="radio"
+                            name="student-gender"
+                            value={genderVal}
+                            checked={form.gender === genderVal}
+                            onChange={() => setForm({ ...form, gender: genderVal })}
+                            className="w-3.5 h-3.5 text-blue-600 border-slate-350 dark:border-slate-800 focus:ring-blue-500 dark:focus:ring-blue-400 dark:bg-slate-900"
+                          />
+                          <span>{genderVal}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -3599,7 +3629,7 @@ export default function Dashboard() {
   const isDarkMode = dbUser?.theme === 'dark';
 
   return (
-    <div className={`min-h-screen bg-[#F8FAFC] dark:bg-slate-950 flex text-slate-800 dark:text-slate-100 transition-colors duration-300 ${isDarkMode ? 'dark' : ''}`}>
+    <div className={`min-h-screen bg-[#F8FAFC] dark:bg-[#04010a] cyber-grid flex text-slate-800 dark:text-slate-100 transition-colors duration-300 ${isDarkMode ? 'dark' : ''}`}>
       {/* Sidebar */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#0B192C] flex flex-col transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="p-6 border-b border-[#1A2A40]">
@@ -3702,7 +3732,7 @@ export default function Dashboard() {
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC] dark:bg-slate-950">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC] dark:bg-[#04010a]/90 backdrop-blur-sm cyber-grid">
         <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200/80 dark:border-slate-800 px-6 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
@@ -3933,6 +3963,9 @@ function JarvisVoiceAssistant({ stats, user, setCurrentView }) {
           if (e.error !== 'no-speech') {
             console.warn("Speech recognition warning:", e.error);
           }
+          if (e.error === 'not-allowed') {
+            setJarvisReply("Microphone access blocked. Click the microphone icon in your browser's address bar to allow access.");
+          }
           setIsListening(false);
         };
 
@@ -4071,6 +4104,10 @@ function JarvisVoiceAssistant({ stats, user, setCurrentView }) {
   };
 
   const toggleMic = () => {
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      alert("Microphone & Speech Recognition require a secure context (HTTPS or localhost).\n\nSince you are accessing this via a local IP (http://172.20.10.6:3000), Chrome blocks microphone access.\n\nTo run it here:\n1. Open Chrome and search for: chrome://flags/#unsafely-treat-insecure-origin-as-secure\n2. Enable it and add 'http://172.20.10.6:3000' to the list.\n3. Relaunch Chrome.");
+      return;
+    }
     if (!recognition) {
       alert("Speech recognition is not supported in this browser. Please use Chrome or Safari.");
       return;
@@ -4092,26 +4129,26 @@ function JarvisVoiceAssistant({ stats, user, setCurrentView }) {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3 font-semibold">
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3.5 font-semibold font-mono">
       {isOpen && (
-        <div className="bg-slate-900 border border-indigo-500/35 p-5 rounded-3xl w-72 shadow-2xl text-white space-y-4 animate-in slide-in-from-bottom-5 duration-300">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+        <div className="bg-[#080214]/95 backdrop-blur-2xl border border-cyan-500/35 p-5 rounded-2xl w-72 shadow-2xl text-white space-y-4 animate-in slide-in-from-bottom-5 duration-300 shadow-[0_0_40px_rgba(0,240,255,0.2)]">
+          <div className="flex items-center justify-between border-b border-cyan-500/10 pb-2">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">J.A.R.V.I.S. Core</span>
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">J.A.R.V.I.S. HUD</span>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors text-[10px] font-black uppercase tracking-wider">Close</button>
+            <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-cyan-400 transition-colors text-[10px] font-black uppercase tracking-wider">Close</button>
           </div>
 
           <div className="space-y-3">
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/40">
-              <p className="text-[9px] font-black uppercase text-indigo-400 tracking-wider">Input Heard</p>
-              <p className="text-xs font-semibold text-slate-350 mt-1 min-h-6">{transcript || (isListening ? 'Jarvis is listening... speak your command' : 'Microphone disabled. Click to enable.')}</p>
+            <div className="bg-slate-950/60 p-3.5 rounded-xl border border-cyan-500/10 shadow-inner">
+              <p className="text-[9px] font-black uppercase text-cyan-500 tracking-wider">Input Heard</p>
+              <p className="text-xs font-semibold text-cyan-400 mt-1 min-h-6 leading-relaxed">{transcript || (isListening ? 'Awaiting prompt...' : 'Voice link offline.')}</p>
             </div>
 
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/40">
-              <p className="text-[9px] font-black uppercase text-emerald-400 tracking-wider">Jarvis Reply</p>
-              <p className="text-xs font-semibold text-slate-200 mt-1 min-h-6">{jarvisReply || 'Waiting for command...'}</p>
+            <div className="bg-slate-950/60 p-3.5 rounded-xl border border-cyan-500/10 shadow-inner">
+              <p className="text-[9px] font-black uppercase text-fuchsia-400 tracking-wider">Jarvis Reply</p>
+              <p className="text-xs font-s}t-1 min-h-6 leading-relaxed">{jarvisReply || 'Waiting for command...'}</p>
             </div>
           </div>
 
@@ -4120,8 +4157,8 @@ function JarvisVoiceAssistant({ stats, user, setCurrentView }) {
               onClick={toggleMic}
               className={`p-4 rounded-full transition-all shadow-md flex items-center justify-center ${
                 isListening 
-                  ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse' 
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:scale-105'
+                  ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse shadow-[0_0_15px_rgba(220,38,38,0.4)]' 
+                  : 'bg-indigo-650 hover:bg-indigo-600 text-white hover:scale-105 shadow-[0_0_15px_rgba(79,70,229,0.3)]'
               }`}
             >
               {isListening ? (
@@ -4149,20 +4186,20 @@ function JarvisVoiceAssistant({ stats, user, setCurrentView }) {
             }, 500);
           }
         }}
-        className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all bg-slate-900 border-2 ${
+        className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all bg-slate-950 border-2 ${
           isSpeaking 
-            ? 'border-emerald-500 shadow-emerald-500/20 scale-105' 
+            ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-105' 
             : isListening 
-              ? 'border-red-500 shadow-red-500/20 scale-105' 
-              : 'border-indigo-500 hover:border-indigo-400 shadow-indigo-500/10 hover:scale-105'
+              ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)] scale-105' 
+              : 'border-indigo-500/60 hover:border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.25)] hover:scale-105'
         }`}
       >
         <div className="relative w-8 h-8 flex items-center justify-center">
-          <div className={`absolute inset-0 rounded-full border border-dashed animate-spin ${
-            isSpeaking ? 'border-emerald-500/80' : isListening ? 'border-red-500/80' : 'border-indigo-500/40'
+          <div className={`absolute inset-0 rounded-full border border-dashed animate-spin-slow ${
+            isSpeaking ? 'border-emerald-500/80' : isListening ? 'border-red-500/80' : 'border-indigo-500/50'
           }`} />
-          <div className={`w-3.5 h-3.5 rounded-full ${
-            isSpeaking ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : isListening ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : 'bg-indigo-500 shadow-[0_0_8px_#6366f1]'
+          <div className={`w-3.5 h-3.5 rounded-full transition-all duration-300 ${
+            isSpeaking ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : isListening ? 'bg-red-500 shadow-[0_0_10px_#ef4444]' : 'bg-indigo-550 shadow-[0_0_10px_#6366f1]'
           }`} />
         </div>
       </button>
