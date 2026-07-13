@@ -4,7 +4,7 @@ export async function POST(request) {
   try {
     const { messages } = await request.json();
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GEMTNT_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
         { reply: "Excuse me, Sir, but the GEMINI_API_KEY environment variable is not configured on the server side.", action: { type: "NONE", payload: "" } },
